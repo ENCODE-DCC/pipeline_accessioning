@@ -1,5 +1,10 @@
 {
-	"accession.common_metadata": {},
+	"accession.metadata_outputs_path":	"atac-seq-accessioning-samples/atac/9a763f23-e6cf-48ad-881a-d296115acf53/call-read_genome_tsv",
+	"accession.google_credentials":	"/Users/bek/gcloud/atac-seq-pipeline-bb9ab8561cc3.json",
+	"accession.common_metadata": {
+		"lab": "/labs/anshul-kundaje/",
+	    "award": "U41HG007000"
+	},
 	"accession.steps": [
 	    {
 	        "dcc_step_version":     "/analysis-step-versions/kundaje-lab-atac-seq-trim-align-filter-step-v-1-0/",
@@ -10,8 +15,8 @@
 	                "filekey":                  "nodup_bam",
 	                "output_type":              "alignments",
 	                "file_format":              "bam",
-	                "derived_from_task":    "trim_adapter",
-	                "derived_from_filekey": "fastqs",
+	                "derived_from_task":	    "trim_adapter",
+	                "derived_from_filekey":	    "fastqs",
 	                "derived_from_inputs":      "true"
 	            }
 	        ]
@@ -25,15 +30,15 @@
 	                "filekey":                  "sig_fc",
 	                "output_type":              "fold change over control",
 	                "file_format":              "bigWig",
-	                "derived_from_task":    "filter",
-	                "derived_from_filekey": "nodup_bam",
+	                "derived_from_task":	    "filter",
+	                "derived_from_filekey":	    "nodup_bam",
 	            }
 	            {
 	                "filekey":                  "sig_pval",
 	                "output_type":              "signal p-value",
 	                "file_format":              "bigWig",
-	                "derived_from_task":    "filter",
-	                "derived_from_filekey": "nodup_bam",
+	                "derived_from_task":	    "filter",
+	                "derived_from_filekey":	    "nodup_bam",
 	            }
 	        ]
 	    },
@@ -46,8 +51,8 @@
 	                "filekey":                  "bfilt_npeak",
 	                "output_type":              "peaks and background as input for IDR",
 	                "file_format":              "bed",
-	                "derived_from_task":    "filter",
-	                "derived_from_filekey": "nodup_bam",
+	                "derived_from_task":	    "filter",
+	                "derived_from_filekey":	    "nodup_bam",
 	            }
 	        ]
 	    },
@@ -60,8 +65,8 @@
 	                "filekey":                  "bfilt_npeak_bb",
 	                "output_type":              "peaks and background as input for IDR",
 	                "file_format":              "bigBed",
-	                "derived_from_task":    "macs2",
-	                "derived_from_filekey": "bfilt_npeak",
+	                "derived_from_task":	    "macs2",
+	                "derived_from_filekey":	    "bfilt_npeak",
 	            }
 	        ]
 	    },
@@ -74,15 +79,15 @@
 	                "filekey":                  "optimal_peak",
 	                "output_type":              "optimal idr thresholded peaks",
 	                "file_format":              "bed",
-	                "derived_from_task":    "macs2",
-	                "derived_from_filekey": "bfilt_npeak",
+	                "derived_from_task":	    "macs2",
+	                "derived_from_filekey":	    "bfilt_npeak",
 	            }
 	            {
 	                "filekey":                  "conservative_peak",
 	                "output_type":              "conservative idr thresholded peaks",
 	                "file_format":              "bed",
-	                "derived_from_task":    "macs2",
-	                "derived_from_filekey": "bfilt_npeak",
+	                "derived_from_task":	    "macs2",
+	                "derived_from_filekey":	    "bfilt_npeak",
 	            }
 	        ]
 	    },
@@ -95,8 +100,8 @@
 	                "filekey":                  "optimal_peak",
 	                "output_type":              "replacated peaks",
 	                "file_format":              "bed",
-	                "derived_from_task":    "macs2",
-	                "derived_from_filekey": "bfilt_npeak",
+	                "derived_from_task":	    "macs2",
+	                "derived_from_filekey":	    "bfilt_npeak",
 	            }
 	        ]
 	    }

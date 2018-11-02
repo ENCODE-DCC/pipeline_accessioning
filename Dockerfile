@@ -15,6 +15,5 @@ WORKDIR /software
 ENV PATH="/software:${PATH}"
 
 COPY src pipeline_accessioning/src
+RUN chmod +x pipeline_accessioning/src/*.py
 ENV PATH="/software/pipeline_accessioning/src:${PATH}"
-
-ENTRYPOINT ["/bin/bash","-c"]

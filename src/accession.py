@@ -1,7 +1,10 @@
+#!/usr/bin/python3
 import json
 import tempfile
 import pdb
 import operator
+import argparse
+import os
 import encode_utils as eu
 from itertools import chain
 from functools import reduce
@@ -181,6 +184,7 @@ class Analysis(object):
                 fastqs.append(file)
         return fastqs
 
+
     # Search the Analysis hirearchy up for a file matching filekey
     # Returns generator object, access with next() or list()
     def search_up(self, task, task_name, filekey, inputs=False):
@@ -247,9 +251,8 @@ class GSFile(object):
 
 class Accession(object):
     """docstring for Accession"""
-    def __init__(self, accession_id, metadata_json, bucket_name, server):
+    def __init__(self, metadata_json, bucket_name, server):
         super(Accession, self).__init__()
-        self.accession_id = accession_id
         self.analysis = Analysis(metadata_json, bucket_name)
         self.backend = self.analysis.backend
         self.conn = Connection(server)
@@ -322,7 +325,9 @@ class Accession(object):
 
     @property
     def dataset(self):
-        return '/experiments/{}/'.format(self.accession_id)
+        return self.conn.get(
+            self.file_at_portal(
+                self.analysis.raw_fastqs[0].filename)).get('dataset')
 
     def file_from_template(self,
                            file,
@@ -507,4 +512,37 @@ class Accession(object):
     def accession_steps(self, steps_and_params_json):
         for step in steps_and_parameters_json:
             self.accession_step(step)
+
+
+def filter_outputs_by_path(path):
+    bucket = path.split('/')[0]
+    google_backend = GCBackend(bucket)
+    filtered = [file
+                for file
+                in list(google_backend.bucket.list_blobs())
+                if path in file.id]
+    for file in filtered:
+        os.makedirs(os.path.dirname(file.id), exists_ok=True)
+        file.download_to_filename(file.id)
+    with open('filtered.txt', 'a') as f:
+        for file in filtered:
+            f.write("{}\n".format(file.id))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Accession pipeline outputs, \
+                                                 download output metadata for scattering")
+    parser.add_argument('--filter-from-path',
+                        type=str,
+                        default=None,
+                        help='path to a folder with pipeline run outputs')
+    args = parser.parse_args()
+    if args.filter_from_path:
+        filter_outputs_by_path(args.filter_from_path)
+
+
+# Filter and scatter
+# Commmon metadata in input.json
+# each analysis determines it's own bucket
+# only input bucket is passed
 
