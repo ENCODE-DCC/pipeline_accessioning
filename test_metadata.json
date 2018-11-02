@@ -1,0 +1,88 @@
+{
+  "workflowName": "accession",
+  "actualWorkflowLanguageVersion": "draft-2",
+  "submittedFiles": {
+    "workflow": "workflow accession {\n\tString metadata_outputs_path\n\tFile google_credentials\n\n\tcall filter_outputs { input :\n\t\tcredentials = google_credentials,\n\t\tfilter_path = metadata_outputs_path\n\t}\n\n\tscatter(metadata in filter_outputs.metadata_outputs) {\n\n\t\tcall accession_metadata { input :\n\t\t\tcredentials = google_credentials,\n\t\t\tmetadata = metadata\n\t\t}\n\t}\n}\n\ntask filter_outputs {\n\tString filter_path\n\tFile credentials\n\n\tcommand {\n\t\texport GOOGLE_APPLICATION_CREDENTIALS=${credentials}\n\t\taccession.py ${\"--filter-from-path \" + filter_path}\n\t\tcat filtered.txt | xargs -I % ln % filtered_out\n\t}\n\n\toutput {\n\t\tArray[File] metadata_outputs = glob(\"filtered_out/*.json\")\n\t}\n}\n\n\ntask accession_metadata {\n\tFile metadata\n\tFile credentials\n\n\tcommand {\n\t\tls ${metadata}\n\t}\n\n\toutput {\n\t\tString log = read_string(stdout())\n\t}\n}",
+    "root": "",
+    "options": "{\n\n}",
+    "inputs": "{\n\t\"accession.metadata_outputs_path\":\t\"atac-seq-accessioning-samples/atac/9a763f23-e6cf-48ad-881a-d296115acf53/call-read_genome_tsv\",\n\t\"accession.google_credentials\":\t\t\"/Users/bek/gcloud/atac-seq-pipeline-bb9ab8561cc3.json\",\n\t\"accession.steps\": [\n\t    {\n\t        \"dcc_step_version\":     \"/analysis-step-versions/kundaje-lab-atac-seq-trim-align-filter-step-v-1-0/\",\n\t        \"dcc_step_run\":         \"atac-seq-trim-align-filter-step-run-v1\",\n\t        \"wdl_task_name\":        \"filter\",\n\t        \"wdl_files\":            [\n\t            {\n\t                \"filekey\":                  \"nodup_bam\",\n\t                \"output_type\":              \"alignments\",\n\t                \"file_format\":              \"bam\",\n\t                \"derived_from_task\":\t    \"trim_adapter\",\n\t                \"derived_from_filekey\":\t    \"fastqs\",\n\t                \"derived_from_inputs\":      \"true\"\n\t            }\n\t        ]\n\t    },\n\t    {\n\t        \"dcc_step_version\":     \"/analysis-step-versions/kundaje-lab-atac-seq-signals-step-v-1-0/\",\n\t        \"dcc_step_run\":         \"atac-seq-signal-generation-step-run-v1\",\n\t        \"wdl_task_name\":        \"macs2\",\n\t        \"wdl_files\":            [\n\t            {\n\t                \"filekey\":                  \"sig_fc\",\n\t                \"output_type\":              \"fold change over control\",\n\t                \"file_format\":              \"bigWig\",\n\t                \"derived_from_task\":\t    \"filter\",\n\t                \"derived_from_filekey\":\t    \"nodup_bam\"\n\t            },\n\t            {\n\t                \"filekey\":                  \"sig_pval\",\n\t                \"output_type\":              \"signal p-value\",\n\t                \"file_format\":              \"bigWig\",\n\t                \"derived_from_task\":\t    \"filter\",\n\t                \"derived_from_filekey\":\t    \"nodup_bam\"\n\t            }\n\t        ]\n\t    },\n\t    {\n\t        \"dcc_step_version\":     \"/analysis-step-versions/kundaje-lab-atac-seq-peak-call-step-v-1-0/\",\n\t        \"dcc_step_run\":         \"atac-seq-peaks-filter-step-run-v1\",\n\t        \"wdl_task_name\":        \"macs2\",\n\t        \"wdl_files\":            [\n\t            {\n\t                \"filekey\":                  \"bfilt_npeak\",\n\t                \"output_type\":              \"peaks and background as input for IDR\",\n\t                \"file_format\":              \"bed\",\n\t                \"derived_from_task\":\t    \"filter\",\n\t                \"derived_from_filekey\":\t    \"nodup_bam\"\n\t            }\n\t        ]\n\t    },\n\t    {\n\t        \"dcc_step_version\":     \"/analysis-step-versions/kundaje-lab-atac-seq-filtered-peaks-conversion-step-v-1-0/\",\n\t        \"dcc_step_run\":         \"atac-seq-filtered-peaks-to-bigbed-step-run-v1\",\n\t        \"wdl_task_name\":        \"macs2\",\n\t        \"wdl_files\":            [\n\t            {\n\t                \"filekey\":                  \"bfilt_npeak_bb\",\n\t                \"output_type\":              \"peaks and background as input for IDR\",\n\t                \"file_format\":              \"bigBed\",\n\t                \"derived_from_task\":\t    \"macs2\",\n\t                \"derived_from_filekey\":\t    \"bfilt_npeak\"\n\t            }\n\t        ]\n\t    },\n\t    {\n\t        \"dcc_step_version\":     \"/analysis-step-versions/kundaje-lab-atac-seq-idr-step-v-1-0/\",\n\t        \"dcc_step_run\":         \"atac-seq-idr-step-run-v1\",\n\t        \"wdl_task_name\":        \"reproducibility_idr\",\n\t        \"wdl_files\":            [\n\t            {\n\t                \"filekey\":                  \"optimal_peak\",\n\t                \"output_type\":              \"optimal idr thresholded peaks\",\n\t                \"file_format\":              \"bed\",\n\t                \"derived_from_task\":\t    \"macs2\",\n\t                \"derived_from_filekey\":\t    \"bfilt_npeak\"\n\t            },\n\t            {\n\t                \"filekey\":                  \"conservative_peak\",\n\t                \"output_type\":              \"conservative idr thresholded peaks\",\n\t                \"file_format\":              \"bed\",\n\t                \"derived_from_task\":\t    \"macs2\",\n\t                \"derived_from_filekey\":\t    \"bfilt_npeak\"\n\t            }\n\t        ]\n\t    },\n\t    {\n\t        \"dcc_step_version\":     \"/analysis-step-versions/kundaje-lab-atac-seq-overlap-peaks-step-v-1-0/\",\n\t        \"dcc_step_run\":         \"atac-seq-overlap-step-run-v1\",\n\t        \"wdl_task_name\":        \"reproducibility_overlap\",\n\t        \"wdl_files\":            [\n\t            {\n\t                \"filekey\":                  \"optimal_peak\",\n\t                \"output_type\":              \"replacated peaks\",\n\t                \"file_format\":              \"bed\",\n\t                \"derived_from_task\":\t    \"macs2\",\n\t                \"derived_from_filekey\":\t    \"bfilt_npeak\"\n\t            }\n\t        ]\n\t    }\n\t]\n}",
+    "workflowUrl": "accession.wdl",
+    "labels": "{}"
+  },
+  "calls": {
+    "accession.filter_outputs": [{
+      "executionStatus": "Done",
+      "stdout": "/Users/bek/pipeline_accessioning/cromwell-executions/accession/70846992-c99d-4875-b01d-56e5af60f0c3/call-filter_outputs/execution/stdout",
+      "backendStatus": "Done",
+      "commandLine": "export GOOGLE_APPLICATION_CREDENTIALS=/Users/bek/pipeline_accessioning/cromwell-executions/accession/70846992-c99d-4875-b01d-56e5af60f0c3/call-filter_outputs/inputs/163280459/atac-seq-pipeline-bb9ab8561cc3.json\naccession.py --filter-from-path atac-seq-accessioning-samples/atac/9a763f23-e6cf-48ad-881a-d296115acf53/call-read_genome_tsv\ncat filtered.txt | xargs -I % ln % filtered_out",
+      "shardIndex": -1,
+      "outputs": {
+        "metadata_outputs": []
+      },
+      "runtimeAttributes": {
+        "continueOnReturnCode": "0",
+        "maxRetries": "0",
+        "failOnStderr": "false"
+      },
+      "callCaching": {
+        "allowResultReuse": false,
+        "effectiveCallCachingMode": "CallCachingOff"
+      },
+      "inputs": {
+        "credentials": "/Users/bek/gcloud/atac-seq-pipeline-bb9ab8561cc3.json",
+        "filter_path": "atac-seq-accessioning-samples/atac/9a763f23-e6cf-48ad-881a-d296115acf53/call-read_genome_tsv"
+      },
+      "returnCode": 0,
+      "jobId": "23379",
+      "backend": "Local",
+      "end": "2018-11-02T10:35:47.761-07:00",
+      "stderr": "/Users/bek/pipeline_accessioning/cromwell-executions/accession/70846992-c99d-4875-b01d-56e5af60f0c3/call-filter_outputs/execution/stderr",
+      "callRoot": "/Users/bek/pipeline_accessioning/cromwell-executions/accession/70846992-c99d-4875-b01d-56e5af60f0c3/call-filter_outputs",
+      "attempt": 1,
+      "executionEvents": [{
+        "description": "RequestingExecutionToken",
+        "endTime": "2018-11-02T10:35:42.477-07:00",
+        "startTime": "2018-11-02T10:35:41.849-07:00"
+      }, {
+        "endTime": "2018-11-02T10:35:47.760-07:00",
+        "description": "RunningJob",
+        "startTime": "2018-11-02T10:35:42.553-07:00"
+      }, {
+        "endTime": "2018-11-02T10:35:41.849-07:00",
+        "description": "Pending",
+        "startTime": "2018-11-02T10:35:41.835-07:00"
+      }, {
+        "endTime": "2018-11-02T10:35:42.553-07:00",
+        "description": "PreparingJob",
+        "startTime": "2018-11-02T10:35:42.485-07:00"
+      }, {
+        "description": "UpdatingJobStore",
+        "startTime": "2018-11-02T10:35:47.760-07:00",
+        "endTime": "2018-11-02T10:35:47.761-07:00"
+      }, {
+        "endTime": "2018-11-02T10:35:42.485-07:00",
+        "startTime": "2018-11-02T10:35:42.477-07:00",
+        "description": "WaitingForValueStore"
+      }],
+      "start": "2018-11-02T10:35:41.822-07:00"
+    }]
+  },
+  "outputs": {
+    "accession.filter_outputs.metadata_outputs": [],
+    "accession.accession_metadata.log": []
+  },
+  "workflowRoot": "/Users/bek/pipeline_accessioning/cromwell-executions/accession/70846992-c99d-4875-b01d-56e5af60f0c3",
+  "actualWorkflowLanguage": "WDL",
+  "id": "70846992-c99d-4875-b01d-56e5af60f0c3",
+  "inputs": {
+    "accession.google_credentials": "/Users/bek/gcloud/atac-seq-pipeline-bb9ab8561cc3.json",
+    "accession.metadata_outputs_path": "atac-seq-accessioning-samples/atac/9a763f23-e6cf-48ad-881a-d296115acf53/call-read_genome_tsv"
+  },
+  "labels": {
+    "cromwell-workflow-id": "cromwell-70846992-c99d-4875-b01d-56e5af60f0c3"
+  },
+  "submission": "2018-11-02T10:35:38.541-07:00",
+  "status": "Succeeded",
+  "end": "2018-11-02T10:35:52.076-07:00",
+  "start": "2018-11-02T10:35:38.607-07:00"
+}
