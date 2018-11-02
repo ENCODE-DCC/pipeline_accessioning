@@ -24,6 +24,7 @@ task filter_outputs {
 
 	command {
 		export GOOGLE_APPLICATION_CREDENTIALS=${credentials}
+		mkdir json_files
 		accession.py ${"--filter-from-path " + filter_path}
 		rm ${credentials}
 	}
