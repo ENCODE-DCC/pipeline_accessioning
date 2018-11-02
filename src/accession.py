@@ -522,11 +522,10 @@ def filter_outputs_by_path(path):
                 in list(google_backend.bucket.list_blobs())
                 if path in file.id]
     for file in filtered:
-        os.makedirs(os.path.dirname(file.id), exist_ok=True)
-        file.download_to_filename(file.id)
-    with open('filtered.txt', 'a') as f:
-        for file in filtered:
-            f.write("{}\n".format(file.id))
+        file.download_to_filename(file.id.split('/')[-1])
+    # with open('filtered.txt', 'a') as f:
+    #     for file in filtered:
+    #         f.write("{}\n".format(file.id))
 
 
 if __name__ == '__main__':

@@ -28,13 +28,13 @@ task filter_outputs {
 	}
 
 	output {
-		Array[String] metadata_outputs = read_lines("filtered.txt")
+		Array[File] metadata_outputs = glob("*.json")
 	}
 }
 
 
 task accession_metadata {
-	String metadata
+	File metadata
 	File credentials
 
 	command {
