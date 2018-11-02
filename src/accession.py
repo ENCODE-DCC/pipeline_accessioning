@@ -522,7 +522,7 @@ def filter_outputs_by_path(path):
                 in list(google_backend.bucket.list_blobs())
                 if path in file.id]
     for file in filtered:
-        file.download_to_filename(file.public_url.split('/')[-1])
+        file.download_to_filename("/tmp/{}".format(file.public_url.split('/')[-1]))
 
 
 if __name__ == '__main__':

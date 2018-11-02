@@ -7,7 +7,9 @@ workflow accession {
 		filter_path = metadata_outputs_path
 	}
 
-	scatter(metadata in filter_outputs.metadata_outputs) {
+	Array[File] metadata_jsons_ = filter_outputs.metadata_jsons
+
+	scatter(metadata in metadata_jsons_) {
 
 		call accession_metadata { input :
 			credentials = google_credentials,
@@ -23,12 +25,11 @@ task filter_outputs {
 	command {
 		export GOOGLE_APPLICATION_CREDENTIALS=${credentials}
 		accession.py ${"--filter-from-path " + filter_path}
-		cat filtered.txt | xargs -I % ln % filtered_out
 		rm ${credentials}
 	}
 
 	output {
-		Array[File] metadata_outputs = glob("*.json")
+		Array[File] metadata_jsons = glob("/tmp/*.log")
 	}
 }
 
