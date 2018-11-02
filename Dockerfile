@@ -9,6 +9,7 @@ RUN apk add --no-cache python3 && \
  	pip3 install https://github.com/StanfordBioinformatics/encode_utils/archive/master.zip && \
     rm -r /root/.cache
 
+# Cromwell needs bash
 RUN apk add --no-cache bash
 
 # Make directory for all softwares
