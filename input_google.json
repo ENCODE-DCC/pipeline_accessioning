@@ -1,7 +1,7 @@
 {
-	"accession.metadata_outputs_path":	"atac-seq-accessioning-samples/atac/9a763f23-e6cf-48ad-881a-d296115acf53/call-read_genome_tsv",
-	"accession.google_credentials":		"/Users/bek/gcloud/atac-seq-pipeline-bb9ab8561cc3.json",
-	"accession.dcc_credentials":		"/Users/bek/dcc_creds.txt",
+	"accession.metadata_outputs_path":	"atac-seq-accessioning-samples/metadata_outputs",
+	"accession.google_credentials":		"gs://atac-seq-accessioning-samples/credentials/atac-seq-pipeline-bb9ab8561cc3.json",
+	"accession.dcc_credentials":		"gs://atac-seq-accessioning-samples/credentials/dcc_creds.txt",
 	"accession.dcc_server":				"dev",
 	"accession.steps": [
 	    {

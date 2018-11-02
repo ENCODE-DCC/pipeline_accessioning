@@ -73,12 +73,17 @@ class GCBackend():
 
 class Analysis(object):
     """docstring for Analysis"""
-    def __init__(self, metadata_json, bucket_name):
+    def __init__(self, metadata_json):
         self.files = []
         with open(metadata_json) as json_file:
             self.metadata = json.load(json_file)
-        self.backend = GCBackend(bucket_name)
-        self.tasks = self.make_tasks()
+        if self.metadata:
+            bucket = self.metadata['workflowRoot'].split('gs://')[1]
+            bucket = bucket.split('/')[0]
+            self.backend = GCBackend(bucket)
+            self.tasks = self.make_tasks()
+        else:
+            raise Exception('Valid metadata json output must be supplied')
 
     # Makes instances of Task
     def make_tasks(self):
@@ -251,9 +256,9 @@ class GSFile(object):
 
 class Accession(object):
     """docstring for Accession"""
-    def __init__(self, metadata_json, bucket_name, server):
+    def __init__(self, metadata_json, server):
         super(Accession, self).__init__()
-        self.analysis = Analysis(metadata_json, bucket_name)
+        self.analysis = Analysis(metadata_json)
         self.backend = self.analysis.backend
         self.conn = Connection(server)
         self.new_files = []
@@ -532,13 +537,16 @@ if __name__ == '__main__':
                         type=str,
                         default=None,
                         help='path to a folder with pipeline run outputs')
+    parser.add_argument('--accession-output',
+                        type=str,
+                        default=None,
+                        help='path to a metadata json output file')
+    parser.add_argument('--server',
+                        default='dev',
+                        help='Server files will be accessioned to')
     args = parser.parse_args()
     if args.filter_from_path:
         filter_outputs_by_path(args.filter_from_path)
-
-
-# Filter and scatter
-# Commmon metadata in input.json
-# each analysis determines it's own bucket
-# only input bucket is passed
-
+        return
+    if args.accession_output:
+        accessioner = Accession(args.accession_output, args.server)
