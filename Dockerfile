@@ -8,3 +8,13 @@ RUN apk add --no-cache python3 && \
  	pip3 install google-cloud-storage && \
  	pip3 install https://github.com/StanfordBioinformatics/encode_utils/archive/master.zip && \
     rm -r /root/.cache
+
+# Make directory for all softwares
+RUN mkdir /software
+WORKDIR /software
+ENV PATH="/software:${PATH}"
+
+COPY src pipeline_accessioning/src
+ENV PATH="/software/pipeline_accessioning/src:${PATH}"
+
+ENTRYPOINT ["/bin/bash","-c"]
