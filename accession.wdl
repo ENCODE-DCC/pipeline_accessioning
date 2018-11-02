@@ -37,7 +37,6 @@ task filter_outputs {
 	}
 }
 
-
 task accession_metadata {
 	String server
 	File metadata
