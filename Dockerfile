@@ -9,7 +9,9 @@ RUN apk add --no-cache python3 && \
  	pip3 install https://github.com/StanfordBioinformatics/encode_utils/archive/master.zip && \
     rm -r /root/.cache
 
-# Make directory for all softwares
+RUN apk add --no-cache bash
+
+# Make directory for all  softwares
 RUN mkdir /software
 WORKDIR /software
 ENV PATH="/software:${PATH}"
