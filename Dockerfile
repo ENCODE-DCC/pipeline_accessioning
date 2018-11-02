@@ -12,7 +12,7 @@ RUN apk add --no-cache python3 && \
 # Cromwell needs bash
 RUN apk add --no-cache bash
 
-# Make directory for all  softwares
+# Make directory for all softwares
 RUN mkdir /software
 WORKDIR /software
 ENV PATH="/software:${PATH}"
