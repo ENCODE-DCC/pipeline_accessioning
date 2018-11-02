@@ -24,16 +24,17 @@ task filter_outputs {
 		export GOOGLE_APPLICATION_CREDENTIALS=${credentials}
 		accession.py ${"--filter-from-path " + filter_path}
 		cat filtered.txt | xargs -I % ln % filtered_out
+		rm ${credentials}
 	}
 
 	output {
-		Array[File] metadata_outputs = glob("filtered_out/*.json")
+		Array[String] metadata_outputs = read_lines("filtered.txt")
 	}
 }
 
 
 task accession_metadata {
-	File metadata
+	String metadata
 	File credentials
 
 	command {
