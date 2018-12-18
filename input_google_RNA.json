@@ -1,0 +1,31 @@
+{
+    "accession.metadata_outputs_path":  "atac-seq-accessioning-samples/metadata_outputs",
+    "accession.google_credentials":     "gs://atac-seq-accessioning-samples/credentials/atac-seq-pipeline-bb9ab8561cc3.json",
+    "accession.dcc_credentials":        "gs://atac-seq-accessioning-samples/credentials/dcc_creds.txt",
+    "accession.dcc_server":             "dev",
+    "accession.steps": [
+        {
+            "dcc_step_version":     "/analysis-step-versions/lrna-pe-star-alignment-step-v-1-2/",
+            "dcc_step_run":         "/analysis-step-runs/c9fa910c-208d-449a-bc3b-c7297c6a20a1/",
+            "wdl_task_name":        "align",
+            "wdl_files":            [
+                {
+                    "filekey":                  "genomebam",
+                    "output_type":              "alignments",
+                    "file_format":              "bam",
+                    "derived_from_files": [{
+                        "derived_from_task":        "align",
+                        "derived_from_filekey":     "fastqs",
+                        "derived_from_inputs":      "true"
+                    },
+                    {
+                        "derived_from_task":        "align",
+                        "derived_from_filekey":     "index",
+                        "derived_from_inputs":      "true"
+                    }
+                    ]
+                }
+            ]
+        }
+    ]
+}
