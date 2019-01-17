@@ -367,6 +367,19 @@ class Accession(object):
         obj.update(COMMON_METADATA)
         return obj
 
+    def get_derived_from_all(self, file, files, inputs=False):
+        ancestors = []
+        for ancestor in files:
+            ancestors.append(
+                self.get_derived_from(file,
+                                      ancestor.get('derived_from_task'),
+                                      ancestor.get('derived_from_filekey'),
+                                      ancestor.get('derived_from_inputs')
+                                      )
+                )
+        return ancestors
+
+
     # Returns list of accession ids of files on portal or recently accessioned
     def get_derived_from(self, file, task_name, filekey, inputs=False):
         derived_from_files = list(set(list(self.analysis.search_up(file.task,
@@ -389,12 +402,10 @@ class Accession(object):
 
     # File object to be accessioned
     # inputs=True will search for input fastqs in derived_from
-    def make_file_obj(self, file, file_format, output_type, step_run,
-                      derived_from_task, derived_from_filekey, inputs=False):
-        derived_from = self.get_derived_from(file,
-                                             derived_from_task,
-                                             derived_from_filekey,
-                                             inputs)
+    def make_file_obj(self, file, file_format, output_type, step_run, derived_from_files, inputs=False):
+        derived_from = self.get_derived_from_all(file,
+                                                 derived_from_files,
+                                                 inputs)
         return self.file_from_template(file,
                                        file_format,
                                        output_type,
@@ -487,7 +498,7 @@ class Accession(object):
             single_step_params['dcc_step_version'],
             single_step_params['wdl_task_name'])
         accessioned_files = []
-        for task in self.analysis.get_tasks(task_name):
+        for task in self.analysis.get_tasks(single_step_params['wdl_task_name']):
             for file_params in single_step_params['wdl_files']:
                 for wdl_file in [file
                                  for file
@@ -498,8 +509,7 @@ class Accession(object):
                                              file_params['file_format'],
                                              file_params['output_type'],
                                              step_run,
-                                             file_params['derived_from_task'],
-                                             file_params['derived_from_filekey'])
+                                             file_params['derived_from_files'])
                     encode_file = self.accession_file(obj, wdl_file)
                     # Need to move QC object adding after all files are accessioned
                     # if not list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
@@ -515,7 +525,7 @@ class Accession(object):
         return accessioned_files
 
     def accession_steps(self, steps_and_params_json):
-        for step in steps_and_parameters_json:
+        for step in steps_and_params_json:
             self.accession_step(step)
 
 
