@@ -571,4 +571,4 @@ if __name__ == '__main__':
         accessioner = Accession(args.accession_steps,
                                 args.accession_metadata,
                                 args.server)
-        accessioner.accesssion_steps()
+        accessioner.accession_steps()
