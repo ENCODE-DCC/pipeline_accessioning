@@ -14,6 +14,7 @@ workflow accession {
 
 		call accession_metadata { input :
 			credentials = google_credentials,
+			dcc_credentials = dcc_credentials,
 			metadata = metadata,
 			steps = steps,
 			server = dcc_server
