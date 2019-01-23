@@ -34,7 +34,7 @@ task filter_outputs {
 	}
 
 	output {
-		Array[File] metadata_jsons = glob("json_files/*.json")
+		Array[File] metadata_jsons = glob("*.json")
 	}
 }
 

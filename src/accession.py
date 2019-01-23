@@ -535,11 +535,11 @@ def filter_outputs_by_path(path):
     filtered = [file
                 for file
                 in list(google_backend.bucket.list_blobs())
-                if path in file.id]
+                if path in file.id and '.json' in file.id]
     for file in filtered:
         print('filtered found')
         print(file.id)
-        file.download_to_filename("json_files/{}".format(file.public_url.split('/')[-1]))
+        file.download_to_filename(file.public_url.split('/')[-1])
 
 
 if __name__ == '__main__':
