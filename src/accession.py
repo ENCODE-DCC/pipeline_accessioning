@@ -318,6 +318,7 @@ class Accession(object):
                    'status': 'released',
                    'analysis_step_version': step_version}
         payload[Connection.PROFILE_KEY] = 'analysis_step_runs'
+        payload.update(COMMON_METADATA)
         return self.conn.post(payload)
 
     @property
