@@ -52,7 +52,8 @@ task accession_metadata {
 		source ${dcc_credentials}
 		set +o allexport
 		accession.py \
-			${"--accession-output " + write_json(steps)} \
+			--accession-steps ${write_json(steps)} \
+			${"--accession-metadata " + metadata} \
 			${"--server " + server}
 		rm ${credentials}
 		rm ${dcc_credentials}

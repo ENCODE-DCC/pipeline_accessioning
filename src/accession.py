@@ -256,12 +256,18 @@ class GSFile(object):
 
 class Accession(object):
     """docstring for Accession"""
-    def __init__(self, metadata_json, server):
+    def __init__(self, steps, metadata_json, server):
         super(Accession, self).__init__()
         self.analysis = Analysis(metadata_json)
+        self.steps_and_params_json = self.file_to_json(steps)
         self.backend = self.analysis.backend
         self.conn = Connection(server)
         self.new_files = []
+
+    def file_to_json(self, file):
+        with open(file) as json_file:
+            json_obj = json.load(json_file)
+        return json_obj
 
     def accession_fastqs(self):
         pass
@@ -524,8 +530,8 @@ class Accession(object):
                     accessioned_files.append(encode_file)
         return accessioned_files
 
-    def accession_steps(self, steps_and_params_json):
-        for step in steps_and_params_json:
+    def accession_steps(self):
+        for step in self.steps_and_params_json:
             self.accession_step(step)
 
 
@@ -549,10 +555,14 @@ if __name__ == '__main__':
                         type=str,
                         default=None,
                         help='path to a folder with pipeline run outputs')
-    parser.add_argument('--accession-output',
+    parser.add_argument('--accession-metadata',
                         type=str,
                         default=None,
                         help='path to a metadata json output file')
+    parser.add_argument('--accession-steps',
+                        type=str,
+                        default=None,
+                        help='path to an accessioning steps')
     parser.add_argument('--server',
                         default='dev',
                         help='Server files will be accessioned to')
@@ -561,4 +571,7 @@ if __name__ == '__main__':
         print('path is {}'.format(args.filter_from_path))
         filter_outputs_by_path(args.filter_from_path)
     if args.accession_output:
-        accessioner = Accession(args.accession_output, args.server)
+        accessioner = Accession(args.accession_steps,
+                                args.accession_metadata,
+                                args.server)
+        accessioner.accesssion_steps()
