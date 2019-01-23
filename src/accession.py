@@ -557,6 +557,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.filter_from_path:
         filter_outputs_by_path(args.filter_from_path)
-        return None
     if args.accession_output:
         accessioner = Accession(args.accession_output, args.server)
