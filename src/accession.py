@@ -543,8 +543,6 @@ def filter_outputs_by_path(path):
                 in list(google_backend.bucket.list_blobs())
                 if path in file.id and '.json' in file.id]
     for file in filtered:
-        print('filtered found')
-        print(file.id)
         file.download_to_filename(file.public_url.split('/')[-1])
 
 
@@ -568,9 +566,8 @@ if __name__ == '__main__':
                         help='Server files will be accessioned to')
     args = parser.parse_args()
     if args.filter_from_path:
-        print('path is {}'.format(args.filter_from_path))
         filter_outputs_by_path(args.filter_from_path)
-    if args.accession_output:
+    if args.accession_steps and args.accession_metadata:
         accessioner = Accession(args.accession_steps,
                                 args.accession_metadata,
                                 args.server)
