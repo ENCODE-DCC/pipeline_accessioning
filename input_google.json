@@ -1,5 +1,5 @@
 {
-    "accession.metadata_outputs_path":  "gs://atac-seq-accessioning-samples/metadata_outputs",
+    "accession.metadata_outputs_path":  "atac-seq-accessioning-metadata/metadata_outputs",
     "accession.google_credentials":     "gs://atac-seq-accessioning-samples/credentials/atac-seq-pipeline-bb9ab8561cc3.json",
     "accession.dcc_credentials":        "gs://atac-seq-accessioning-samples/credentials/dcc_creds.txt",
     "accession.dcc_server":             "dev",
