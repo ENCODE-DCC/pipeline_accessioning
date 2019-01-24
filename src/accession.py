@@ -30,7 +30,13 @@ class GCBackend():
         self.local_mapping = {}
 
     def blob_from_filename(self, filename):
-        blob = storage.blob.Blob(self.file_path(filename), self.bucket)
+        bucket_name = filename.split('gs://')[1].split('/')[0]
+        # Reference genome may reside in different buckets
+        if self.bucket.name != bucket_name:
+            bucket = self.client.get_bucket(bucket_name)
+        else:
+            bucket = self.bucket
+        blob = storage.blob.Blob(self.file_path(filename, bucket), bucket)
         blob.reload()
         return blob
 
@@ -48,8 +54,8 @@ class GCBackend():
         return b64decode(blob.md5_hash).hex()
 
     # File path without bucket name
-    def file_path(self, file):
-        file_path = file.split('gs://{}/'.format(self.bucket.name))[1]
+    def file_path(self, file, bucket):
+        file_path = file.split('gs://{}/'.format(bucket.name))[1]
         return file_path
 
     # Downloads file as string
@@ -78,8 +84,7 @@ class Analysis(object):
         with open(metadata_json) as json_file:
             self.metadata = json.load(json_file)
         if self.metadata:
-            bucket = self.metadata['workflowRoot'].split('gs://')[1]
-            bucket = bucket.split('/')[0]
+            bucket = self.metadata['workflowRoot'].split('gs://')[1].split('/')[0]
             self.backend = GCBackend(bucket)
             self.tasks = self.make_tasks()
         else:
