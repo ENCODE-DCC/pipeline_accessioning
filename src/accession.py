@@ -156,9 +156,7 @@ class Analysis(object):
 
     # Extracts file names from dict values
     def extract_files(self, outputs):
-        if (isinstance(outputs, str)
-                and 'gs://' in outputs
-                and self.backend.bucket.name in outputs):
+        if (isinstance(outputs, str) and 'gs://' in outputs):
             yield outputs
         elif isinstance(outputs, list):
             for item in outputs:
