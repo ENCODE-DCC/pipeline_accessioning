@@ -405,6 +405,7 @@ class Accession(object):
                         for gs_file
                         in derived_from_files]
         accessioned_files = encode_files + self.new_files
+        accessioned_files = [x for x in accessioned_files if x is not None]
         derived_from_accession_ids = []
         for gs_file in derived_from_files:
             for encode_file in accessioned_files:
