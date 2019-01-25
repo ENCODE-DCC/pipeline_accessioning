@@ -61,5 +61,6 @@ task accession_metadata {
 
 	output {
 		String log = read_string(stdout())
+		String log_err = read_string(stderr())
 	}
 }

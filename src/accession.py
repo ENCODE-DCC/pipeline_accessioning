@@ -394,7 +394,7 @@ class Accession(object):
             yield nested_list
         if isinstance(nested_list, list):
             for item in nested_list:
-                yield from flatten(item)
+                yield from self.flatten(item)
 
     # Returns list of accession ids of files on portal or recently accessioned
     def get_derived_from(self, file, task_name, filekey, inputs=False):
