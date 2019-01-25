@@ -349,7 +349,8 @@ class Accession(object):
                            output_type,
                            step_run,
                            derived_from,
-                           dataset):
+                           dataset,
+                           file_format_type=None):
         file_name = file.filename.split('gs://')[-1].replace('/', '-')
         obj = {
             'status':               'uploading',
@@ -364,14 +365,8 @@ class Accession(object):
             'file_size':            file.size,
             'md5sum':               file.md5sum
         }
-        if (file_format in ['bed', 'bigBed']
-                and output_type
-                in ['filtered peaks',
-                    'conservative idr thresholded peaks',
-                    'optimal idr thresholded peaks',
-                    'conservative replicated peaks',
-                    'replicated peaks']):
-            obj['file_format_type'] = 'narrowPeak'
+        if file_format_type:
+            obj['file_format_type'] = file_format_type
         obj[Connection.PROFILE_KEY] = 'file'
         obj.update(COMMON_METADATA)
         return obj
@@ -418,7 +413,7 @@ class Accession(object):
 
     # File object to be accessioned
     # inputs=True will search for input fastqs in derived_from
-    def make_file_obj(self, file, file_format, output_type, step_run, derived_from_files, inputs=False):
+    def make_file_obj(self, file, file_format, output_type, step_run, derived_from_files, file_format_type=None, inputs=False):
         derived_from = self.get_derived_from_all(file,
                                                  derived_from_files,
                                                  inputs)
@@ -427,7 +422,8 @@ class Accession(object):
                                        output_type,
                                        step_run,
                                        derived_from,
-                                       self.dataset)
+                                       self.dataset,
+                                       file_format_type)
 
     def attach_flagstat_qc_to(self, encode_bam_file, gs_file):
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
@@ -525,7 +521,8 @@ class Accession(object):
                                              file_params['file_format'],
                                              file_params['output_type'],
                                              step_run,
-                                             file_params['derived_from_files'])
+                                             file_params['derived_from_files'],
+                                             file_format_type=file_params.get('file_format_type'))
                     encode_file = self.accession_file(obj, wdl_file)
                     # Need to move QC object adding after all files are accessioned
                     # if not list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
