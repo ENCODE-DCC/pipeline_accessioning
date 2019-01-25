@@ -340,9 +340,8 @@ class Accession(object):
 
     @property
     def dataset(self):
-        return self.conn.get(
-            self.file_at_portal(
-                self.analysis.raw_fastqs[0].filename)).get('dataset')
+        return self.file_at_portal(
+            self.analysis.raw_fastqs[0].filename).get('dataset')
 
     def file_from_template(self,
                            file,
