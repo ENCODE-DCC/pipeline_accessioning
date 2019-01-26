@@ -72,6 +72,7 @@
                     "filekey":                  "bfilt_npeak_bb",
                     "output_type":              "peaks and background as input for IDR",
                     "file_format":              "bigBed",
+                    "file_format_type":         "narrowPeak",
                     "derived_from_files":       [{
                         "derived_from_task":        "macs2",
                         "derived_from_filekey":     "bfilt_npeak"
@@ -113,7 +114,7 @@
             "wdl_files":            [
                 {
                     "filekey":                  "optimal_peak",
-                    "output_type":              "replacated peaks",
+                    "output_type":              "replicated peaks",
                     "file_format":              "bed",
                     "file_format_type":         "narrowPeak",
                     "derived_from_files":       [{
