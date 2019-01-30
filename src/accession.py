@@ -406,7 +406,7 @@ class Accession(object):
             for encode_file in accessioned_files:
                 if gs_file.md5sum == encode_file.get('md5sum'):
                     derived_from_accession_ids.append(encode_file.get('accession'))
-        if len(derived_from_accession_ids) != len(derived_from_files):
+        if len(list(set(derived_from_accession_ids))) != len(derived_from_files):
             raise Exception('Missing derived_from files on the portal')
         return ['/files/{}/'.format(accession_id)
                 for accession_id in derived_from_accession_ids]
