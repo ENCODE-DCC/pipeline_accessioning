@@ -523,7 +523,13 @@ class Accession(object):
                                              step_run,
                                              file_params['derived_from_files'],
                                              file_format_type=file_params.get('file_format_type'))
-                    encode_file = self.accession_file(obj, wdl_file)
+                    try:
+                        encode_file = self.accession_file(obj, wdl_file)
+                    except HTTPError as e:
+                        if 'Conflict' in str(e):
+                            continue
+                        else:
+                            raise
                     # Need to move QC object adding after all files are accessioned
                     # if not list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
                     #                              in x['@type'],
