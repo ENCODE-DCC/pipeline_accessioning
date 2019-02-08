@@ -11,6 +11,7 @@ from functools import reduce
 from base64 import b64encode, b64decode
 from encode_utils.connection import Connection
 from google.cloud import storage
+from requests.exceptions import HTTPError
 
 
 COMMON_METADATA = {
@@ -406,7 +407,8 @@ class Accession(object):
             for encode_file in accessioned_files:
                 if gs_file.md5sum == encode_file.get('md5sum'):
                     derived_from_accession_ids.append(encode_file.get('accession'))
-        if len(list(set(derived_from_accession_ids))) != len(derived_from_files):
+        derived_from_accession_ids = list(set(derived_from_accession_ids))
+        if len(derived_from_accession_ids) != len(derived_from_files):
             raise Exception('Missing derived_from files on the portal')
         return ['/files/{}/'.format(accession_id)
                 for accession_id in derived_from_accession_ids]
@@ -526,7 +528,7 @@ class Accession(object):
                     try:
                         encode_file = self.accession_file(obj, wdl_file)
                     except HTTPError as e:
-                        if 'Conflict' in str(e):
+                        if 'Conflict' in str(e) and file_params.get('possible_duplicate'):
                             continue
                         else:
                             raise
