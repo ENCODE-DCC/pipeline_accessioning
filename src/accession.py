@@ -19,6 +19,11 @@ COMMON_METADATA = {
     'award': 'U41HG007000'
 }
 
+QC_MAP = {
+    'cross_correlation': 'attach_cross_correlation_qc_to',
+    'samtools_flagstat': 'attach_flagstat_qc_to'
+}
+
 
 ASSEMBLIES = ['GRCh38', 'mm10']
 
@@ -428,6 +433,11 @@ class Accession(object):
                                        file_format_type)
 
     def attach_flagstat_qc_to(self, encode_bam_file, gs_file):
+        # Return early if qc metric exists
+        if list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
+                                 in x['@type'],
+                       encode_bam_file['quality_metrics'])):
+            return
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
         flagstat_qc = qc['nodup_flagstat_qc'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
         for key, value in flagstat_qc.items():
@@ -448,6 +458,12 @@ class Accession(object):
         return posted_qc
 
     def attach_cross_correlation_qc_to(self, encode_bam_file, gs_file):
+        # Return early if qc metric exists
+        if list(filter(lambda x: 'ComplexityXcorrQualityMetric'
+                                 in x['@type'],
+                       encode_file['quality_metrics'])):
+            return
+
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
         plot_pdf = next(self.analysis.search_down(gs_file.task,
                                                   'xcor',
@@ -458,10 +474,12 @@ class Accession(object):
         read_length = int(self.backend.read_file(read_length_file.filename).decode())
         xcor_qc = qc['xcor_score'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
         pbc_qc = qc['pbc_qc'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
+        step_run = encode_bam_file.get('step_run')
         if isinstance(step_run, str):
             step_run_id = step_run
         elif isinstance(step_run, dict):
             step_run_id = step_run.get('@id')
+
         xcor_object = {
             'NRF':                  pbc_qc['NRF'],
             'PBC1':                 pbc_qc['PBC1'],
@@ -477,7 +495,6 @@ class Accession(object):
             "status":               "released",
             "cross_correlation_plot": self.get_attachment(plot_pdf, 'application/pdf')
         }
-        # "cross_correlation_plot": self.get_attachment(plot_pdf, 'application/pdf')
 
         xcor_object.update(COMMON_METADATA)
         xcor_object[Connection.PROFILE_KEY] = 'complexity-xcorr-quality-metrics'
@@ -519,12 +536,16 @@ class Accession(object):
                                  in task.output_files
                                  if file_params['filekey']
                                  in file.filekeys]:
+
                     obj = self.make_file_obj(wdl_file,
                                              file_params['file_format'],
                                              file_params['output_type'],
                                              step_run,
                                              file_params['derived_from_files'],
                                              file_format_type=file_params.get('file_format_type'))
+
+                    # Conservative IDR thresholded peaks may have
+                    # the same md5sum as optimal one
                     try:
                         encode_file = self.accession_file(obj, wdl_file)
                     except HTTPError as e:
@@ -532,16 +553,16 @@ class Accession(object):
                             continue
                         else:
                             raise
-                    # Need to move QC object adding after all files are accessioned
-                    # if not list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
-                    #                              in x['@type'],
-                    #                    encode_file['quality_metrics'])):
-                    #     self.attach_flagstat_qc_to(encode_file, bam)
-                    # if not list(filter(lambda x: 'ComplexityXcorrQualityMetric'
-                    #                              in x['@type'],
-                    #                    encode_file['quality_metrics'])):
-                    #     self.attach_cross_correlation_qc_to(encode_file, bam)
 
+                    # Parameter file inputted assumes Accession implements
+                    # the methods to attach the quality metrics
+                    quality_metrics = file_params.get('quality_metrics', [])
+                    for qc in quality_metrics:
+                        qc_method = getattr(self, QC_MAP[qc])
+                        # Pass encode file with
+                        # calculated properties
+                        qc_method(self.conn.get(encode_file.get('accession')),
+                                  wdl_file)
                     accessioned_files.append(encode_file)
         return accessioned_files
 

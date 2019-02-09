@@ -13,6 +13,7 @@
                     "filekey":                  "nodup_bam",
                     "output_type":              "alignments",
                     "file_format":              "bam",
+                    "quality_metrics":          ["cross_correlation", "samtools_flagstat"],
                     "derived_from_files":       [{
                         "derived_from_task":        "trim_adapter",
                         "derived_from_filekey":     "fastqs",
