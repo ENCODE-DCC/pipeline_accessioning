@@ -439,7 +439,7 @@ class Accession(object):
                        encode_bam_file['quality_metrics'])):
             return
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
-        flagstat_qc = qc['nodup_flagstat_qc'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
+        flagstat_qc = qc['nodup_flagstat_qc']['rep' + str(int(encode_bam_file.get('biological_replicates')[0]) - 1)]
         for key, value in flagstat_qc.items():
             if '_pct' in key:
                 flagstat_qc[key] = '{}%'.format(value)
@@ -472,8 +472,8 @@ class Accession(object):
                                                         'bowtie2',
                                                         'read_len_log'))
         read_length = int(self.backend.read_file(read_length_file.filename).decode())
-        xcor_qc = qc['xcor_score'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
-        pbc_qc = qc['pbc_qc'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
+        xcor_qc = qc['xcor_score']['rep' + str(int(encode_bam_file.get('biological_replicates')[0]) - 1)]
+        pbc_qc = qc['pbc_qc']['rep' + str(int(encode_bam_file.get('biological_replicates')[0]) - 1)]
         step_run = encode_bam_file.get('step_run')
         if isinstance(step_run, str):
             step_run_id = step_run
