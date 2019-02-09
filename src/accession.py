@@ -549,8 +549,7 @@ class Accession(object):
                     try:
                         encode_file = self.accession_file(obj, wdl_file)
                     except HTTPError as e:
-                        if 'Conflict' in str(e)
-                        and file_params.get('possible_duplicate'):
+                        if 'Conflict' in str(e) and file_params.get('possible_duplicate'):
                             continue
                         else:
                             raise
