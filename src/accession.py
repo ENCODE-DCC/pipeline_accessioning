@@ -513,7 +513,6 @@ class Accession(object):
         if type(contents) is bytes:
             # The Portal treats the contents as string "b'bytes'"
             contents = str(contents).replace('b', '', 1).replace('\'', '')
-        pdb.set_trace()
         obj = {
             'type': mime_type,
             'download': gs_file.filename.split('/')[-1],
