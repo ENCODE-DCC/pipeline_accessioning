@@ -449,7 +449,7 @@ class Accession(object):
         rep_pr = idr_qc['rep' + replicate + '-pr']
         frip_score = rep_pr['FRiP']
         idr_peaks = qc['ataqc']['rep' + replicate]['IDR peaks'][0]
-        step_run = encode_bam_file.get('step_run')
+        step_run = encode_file.get('step_run')
         if isinstance(step_run, str):
             step_run_id = step_run
         elif isinstance(step_run, dict):
