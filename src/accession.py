@@ -458,9 +458,10 @@ class Accession(object):
         qc_object['F1'] = frip_score
         qc_object['N1'] = idr_peaks
         idr_cutoff = self.analysis.metadata['inputs']['atac.idr_thresh']
-        plot_png = next(self.analysis.search_down(gs_file.task,
-                                                  'idr_pr',
-                                                  'idr_plot'))
+        # Strongly expects that plot exists
+        plot_png = next(self.analysis.search_up(gs_file.task,
+                                                'idr_pr',
+                                                'idr_plot'))
         qc_object.update({
             'step_run':                             step_run_id,
             'quality_metric_of':                    [encode_bam_file.get('@id')],
