@@ -311,8 +311,8 @@ class Accession(object):
             local_file = self.backend.download(gs_file.filename)[0]
             encode_file['submitted_file_name'] = local_file
             encode_posted_file = self.conn.post(encode_file)
-            # self.conn.upload_file(file_id=encode_posted_file.get('accession'),
-            #                       file_path=local_file)
+            permanent_file_path = {'submitted_file_name': gs_file.filename}
+            self.patch_file(encode_posted_file, permanent_file_path)
             self.new_files.append(encode_posted_file)
             return encode_posted_file
         return file_exists
