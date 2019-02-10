@@ -11,11 +11,18 @@ from functools import reduce
 from base64 import b64encode, b64decode
 from encode_utils.connection import Connection
 from google.cloud import storage
+from requests.exceptions import HTTPError
 
 
 COMMON_METADATA = {
     'lab': '/labs/anshul-kundaje/',
     'award': 'U41HG007000'
+}
+
+QC_MAP = {
+    'cross_correlation': 'attach_cross_correlation_qc_to',
+    'samtools_flagstat': 'attach_flagstat_qc_to',
+    'idr':               'attach_idr_qc_to'
 }
 
 
@@ -30,7 +37,13 @@ class GCBackend():
         self.local_mapping = {}
 
     def blob_from_filename(self, filename):
-        blob = storage.blob.Blob(self.file_path(filename), self.bucket)
+        bucket_name = filename.split('gs://')[1].split('/')[0]
+        # Reference genome may reside in different buckets
+        if self.bucket.name != bucket_name:
+            bucket = self.client.get_bucket(bucket_name)
+        else:
+            bucket = self.bucket
+        blob = storage.blob.Blob(self.file_path(filename, bucket), bucket)
         blob.reload()
         return blob
 
@@ -48,8 +61,8 @@ class GCBackend():
         return b64decode(blob.md5_hash).hex()
 
     # File path without bucket name
-    def file_path(self, file):
-        file_path = file.split('gs://{}/'.format(self.bucket.name))[1]
+    def file_path(self, file, bucket):
+        file_path = file.split('gs://{}/'.format(bucket.name))[1]
         return file_path
 
     # Downloads file as string
@@ -78,8 +91,7 @@ class Analysis(object):
         with open(metadata_json) as json_file:
             self.metadata = json.load(json_file)
         if self.metadata:
-            bucket = self.metadata['workflowRoot'].split('gs://')[1]
-            bucket = bucket.split('/')[0]
+            bucket = self.metadata['workflowRoot'].split('gs://')[1].split('/')[0]
             self.backend = GCBackend(bucket)
             self.tasks = self.make_tasks()
         else:
@@ -151,9 +163,7 @@ class Analysis(object):
 
     # Extracts file names from dict values
     def extract_files(self, outputs):
-        if (isinstance(outputs, str)
-                and 'gs://' in outputs
-                and self.backend.bucket.name in outputs):
+        if (isinstance(outputs, str) and 'gs://' in outputs):
             yield outputs
         elif isinstance(outputs, list):
             for item in outputs:
@@ -188,7 +198,6 @@ class Analysis(object):
             if 'fastqs' in file.filekeys and file.task is None:
                 fastqs.append(file)
         return fastqs
-
 
     # Search the Analysis hirearchy up for a file matching filekey
     # Returns generator object, access with next() or list()
@@ -256,12 +265,18 @@ class GSFile(object):
 
 class Accession(object):
     """docstring for Accession"""
-    def __init__(self, metadata_json, server):
+    def __init__(self, steps, metadata_json, server):
         super(Accession, self).__init__()
         self.analysis = Analysis(metadata_json)
+        self.steps_and_params_json = self.file_to_json(steps)
         self.backend = self.analysis.backend
         self.conn = Connection(server)
         self.new_files = []
+
+    def file_to_json(self, file):
+        with open(file) as json_file:
+            json_obj = json.load(json_file)
+        return json_obj
 
     def accession_fastqs(self):
         pass
@@ -296,8 +311,8 @@ class Accession(object):
             local_file = self.backend.download(gs_file.filename)[0]
             encode_file['submitted_file_name'] = local_file
             encode_posted_file = self.conn.post(encode_file)
-            # self.conn.upload_file(file_id=encode_posted_file.get('accession'),
-            #                       file_path=local_file)
+            permanent_file_path = {'submitted_file_name': gs_file.filename}
+            self.patch_file(encode_posted_file, permanent_file_path)
             self.new_files.append(encode_posted_file)
             return encode_posted_file
         return file_exists
@@ -312,6 +327,7 @@ class Accession(object):
                    'status': 'released',
                    'analysis_step_version': step_version}
         payload[Connection.PROFILE_KEY] = 'analysis_step_runs'
+        print(payload)
         return self.conn.post(payload)
 
     @property
@@ -330,9 +346,8 @@ class Accession(object):
 
     @property
     def dataset(self):
-        return self.conn.get(
-            self.file_at_portal(
-                self.analysis.raw_fastqs[0].filename)).get('dataset')
+        return self.file_at_portal(
+            self.analysis.raw_fastqs[0].filename).get('dataset')
 
     def file_from_template(self,
                            file,
@@ -340,7 +355,8 @@ class Accession(object):
                            output_type,
                            step_run,
                            derived_from,
-                           dataset):
+                           dataset,
+                           file_format_type=None):
         file_name = file.filename.split('gs://')[-1].replace('/', '-')
         obj = {
             'status':               'uploading',
@@ -355,17 +371,30 @@ class Accession(object):
             'file_size':            file.size,
             'md5sum':               file.md5sum
         }
-        if (file_format in ['bed', 'bigBed']
-                and output_type
-                in ['filtered peaks',
-                    'conservative idr thresholded peaks',
-                    'optimal idr thresholded peaks',
-                    'conservative replicated peaks',
-                    'replicated peaks']):
-            obj['file_format_type'] = 'narrowPeak'
+        if file_format_type:
+            obj['file_format_type'] = file_format_type
         obj[Connection.PROFILE_KEY] = 'file'
         obj.update(COMMON_METADATA)
         return obj
+
+    def get_derived_from_all(self, file, files, inputs=False):
+        ancestors = []
+        for ancestor in files:
+            ancestors.append(
+                self.get_derived_from(file,
+                                      ancestor.get('derived_from_task'),
+                                      ancestor.get('derived_from_filekey'),
+                                      ancestor.get('derived_from_inputs')
+                                      )
+                )
+        return list(self.flatten(ancestors))
+
+    def flatten(self, nested_list):
+        if isinstance(nested_list, str):
+            yield nested_list
+        if isinstance(nested_list, list):
+            for item in nested_list:
+                yield from self.flatten(item)
 
     # Returns list of accession ids of files on portal or recently accessioned
     def get_derived_from(self, file, task_name, filekey, inputs=False):
@@ -377,11 +406,13 @@ class Accession(object):
                         for gs_file
                         in derived_from_files]
         accessioned_files = encode_files + self.new_files
+        accessioned_files = [x for x in accessioned_files if x is not None]
         derived_from_accession_ids = []
         for gs_file in derived_from_files:
             for encode_file in accessioned_files:
                 if gs_file.md5sum == encode_file.get('md5sum'):
                     derived_from_accession_ids.append(encode_file.get('accession'))
+        derived_from_accession_ids = list(set(derived_from_accession_ids))
         if len(derived_from_accession_ids) != len(derived_from_files):
             raise Exception('Missing derived_from files on the portal')
         return ['/files/{}/'.format(accession_id)
@@ -389,22 +420,68 @@ class Accession(object):
 
     # File object to be accessioned
     # inputs=True will search for input fastqs in derived_from
-    def make_file_obj(self, file, file_format, output_type, step_run,
-                      derived_from_task, derived_from_filekey, inputs=False):
-        derived_from = self.get_derived_from(file,
-                                             derived_from_task,
-                                             derived_from_filekey,
-                                             inputs)
+    def make_file_obj(self, file, file_format, output_type, step_run, derived_from_files, file_format_type=None, inputs=False):
+        derived_from = self.get_derived_from_all(file,
+                                                 derived_from_files,
+                                                 inputs)
         return self.file_from_template(file,
                                        file_format,
                                        output_type,
                                        step_run,
                                        derived_from,
-                                       self.dataset)
+                                       self.dataset,
+                                       file_format_type)
+
+    def get_bio_replicate(self, encode_file, string=True):
+        replicate = encode_file.get('biological_replicates')[0]
+        if string:
+            return str(replicate)
+        return int(replicate)
+
+    def attach_idr_qc_to(self, encode_file, gs_file):
+        if list(filter(lambda x: 'IDRQualityMetric'
+                                 in x['@type'],
+                       encode_file['quality_metrics'])):
+            return
+        qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
+        idr_qc = qc['idr_frip_qc']
+        replicate = self.get_bio_replicate(encode_file)
+        rep_pr = idr_qc['rep' + replicate + '-pr']
+        frip_score = rep_pr['FRiP']
+        idr_peaks = qc['ataqc']['rep' + replicate]['IDR peaks'][0]
+        step_run = encode_file.get('step_run')
+        if isinstance(step_run, str):
+            step_run_id = step_run
+        elif isinstance(step_run, dict):
+            step_run_id = step_run.get('@id')
+        qc_object = {}
+        qc_object['F1'] = frip_score
+        qc_object['N1'] = idr_peaks
+        idr_cutoff = self.analysis.metadata['inputs']['atac.idr_thresh']
+        # Strongly expects that plot exists
+        plot_png = next(self.analysis.search_up(gs_file.task,
+                                                'idr_pr',
+                                                'idr_plot'))
+        qc_object.update({
+            'step_run':                             step_run_id,
+            'quality_metric_of':                    [encode_file.get('@id')],
+            'IDR_cutoff':                           idr_cutoff,
+            'status':                               'released',
+            'IDR_plot_rep{}_pr'.format(replicate):  self.get_attachment(plot_png, 'image/png')})
+        qc_object.update(COMMON_METADATA)
+        qc_object[Connection.PROFILE_KEY] = 'idr-quality-metrics'
+        posted_qc = self.conn.post(qc_object, require_aliases=False)
+        return posted_qc
 
     def attach_flagstat_qc_to(self, encode_bam_file, gs_file):
+        # Return early if qc metric exists
+        if list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
+                                 in x['@type'],
+                       encode_bam_file['quality_metrics'])):
+            return
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
-        flagstat_qc = qc['nodup_flagstat_qc'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
+        replicate = self.get_bio_replicate(encode_bam_file)
+        flagstat_qc = qc['nodup_flagstat_qc']['rep' + replicate]
         for key, value in flagstat_qc.items():
             if '_pct' in key:
                 flagstat_qc[key] = '{}%'.format(value)
@@ -423,6 +500,12 @@ class Accession(object):
         return posted_qc
 
     def attach_cross_correlation_qc_to(self, encode_bam_file, gs_file):
+        # Return early if qc metric exists
+        if list(filter(lambda x: 'ComplexityXcorrQualityMetric'
+                                 in x['@type'],
+                       encode_bam_file['quality_metrics'])):
+            return
+
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
         plot_pdf = next(self.analysis.search_down(gs_file.task,
                                                   'xcor',
@@ -431,12 +514,15 @@ class Accession(object):
                                                         'bowtie2',
                                                         'read_len_log'))
         read_length = int(self.backend.read_file(read_length_file.filename).decode())
-        xcor_qc = qc['xcor_score'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
-        pbc_qc = qc['pbc_qc'][int(encode_bam_file.get('biological_replicates')[0]) - 1]
+        replicate = self.get_bio_replicate(encode_bam_file)
+        xcor_qc = qc['xcor_score']['rep' + replicate]
+        pbc_qc = qc['pbc_qc']['rep' + replicate]
+        step_run = encode_bam_file.get('step_run')
         if isinstance(step_run, str):
             step_run_id = step_run
         elif isinstance(step_run, dict):
             step_run_id = step_run.get('@id')
+
         xcor_object = {
             'NRF':                  pbc_qc['NRF'],
             'PBC1':                 pbc_qc['PBC1'],
@@ -452,7 +538,6 @@ class Accession(object):
             "status":               "released",
             "cross_correlation_plot": self.get_attachment(plot_pdf, 'application/pdf')
         }
-        # "cross_correlation_plot": self.get_attachment(plot_pdf, 'application/pdf')
 
         xcor_object.update(COMMON_METADATA)
         xcor_object[Connection.PROFILE_KEY] = 'complexity-xcorr-quality-metrics'
@@ -471,7 +556,6 @@ class Accession(object):
         if type(contents) is bytes:
             # The Portal treats the contents as string "b'bytes'"
             contents = str(contents).replace('b', '', 1).replace('\'', '')
-        pdb.set_trace()
         obj = {
             'type': mime_type,
             'download': gs_file.filename.split('/')[-1],
@@ -487,35 +571,45 @@ class Accession(object):
             single_step_params['dcc_step_version'],
             single_step_params['wdl_task_name'])
         accessioned_files = []
-        for task in self.analysis.get_tasks(task_name):
+        for task in self.analysis.get_tasks(single_step_params['wdl_task_name']):
             for file_params in single_step_params['wdl_files']:
                 for wdl_file in [file
                                  for file
                                  in task.output_files
                                  if file_params['filekey']
                                  in file.filekeys]:
+
                     obj = self.make_file_obj(wdl_file,
                                              file_params['file_format'],
                                              file_params['output_type'],
                                              step_run,
-                                             file_params['derived_from_task'],
-                                             file_params['derived_from_filekey'])
-                    encode_file = self.accession_file(obj, wdl_file)
-                    # Need to move QC object adding after all files are accessioned
-                    # if not list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
-                    #                              in x['@type'],
-                    #                    encode_file['quality_metrics'])):
-                    #     self.attach_flagstat_qc_to(encode_file, bam)
-                    # if not list(filter(lambda x: 'ComplexityXcorrQualityMetric'
-                    #                              in x['@type'],
-                    #                    encode_file['quality_metrics'])):
-                    #     self.attach_cross_correlation_qc_to(encode_file, bam)
+                                             file_params['derived_from_files'],
+                                             file_format_type=file_params.get('file_format_type'))
 
+                    # Conservative IDR thresholded peaks may have
+                    # the same md5sum as optimal one
+                    try:
+                        encode_file = self.accession_file(obj, wdl_file)
+                    except HTTPError as e:
+                        if 'Conflict' in str(e) and file_params.get('possible_duplicate'):
+                            continue
+                        else:
+                            raise
+
+                    # Parameter file inputted assumes Accession implements
+                    # the methods to attach the quality metrics
+                    quality_metrics = file_params.get('quality_metrics', [])
+                    for qc in quality_metrics:
+                        qc_method = getattr(self, QC_MAP[qc])
+                        # Pass encode file with
+                        # calculated properties
+                        qc_method(self.conn.get(encode_file.get('accession')),
+                                  wdl_file)
                     accessioned_files.append(encode_file)
         return accessioned_files
 
-    def accession_steps(self, steps_and_params_json):
-        for step in steps_and_parameters_json:
+    def accession_steps(self):
+        for step in self.steps_and_params_json:
             self.accession_step(step)
 
 
@@ -525,9 +619,9 @@ def filter_outputs_by_path(path):
     filtered = [file
                 for file
                 in list(google_backend.bucket.list_blobs())
-                if path in file.id]
+                if path in file.id and '.json' in file.id]
     for file in filtered:
-        file.download_to_filename("json_files/{}".format(file.public_url.split('/')[-1]))
+        file.download_to_filename(file.public_url.split('/')[-1])
 
 
 if __name__ == '__main__':
@@ -537,16 +631,22 @@ if __name__ == '__main__':
                         type=str,
                         default=None,
                         help='path to a folder with pipeline run outputs')
-    parser.add_argument('--accession-output',
+    parser.add_argument('--accession-metadata',
                         type=str,
                         default=None,
                         help='path to a metadata json output file')
+    parser.add_argument('--accession-steps',
+                        type=str,
+                        default=None,
+                        help='path to an accessioning steps')
     parser.add_argument('--server',
                         default='dev',
                         help='Server files will be accessioned to')
     args = parser.parse_args()
     if args.filter_from_path:
         filter_outputs_by_path(args.filter_from_path)
-        return
-    if args.accession_output:
-        accessioner = Accession(args.accession_output, args.server)
+    if args.accession_steps and args.accession_metadata:
+        accessioner = Accession(args.accession_steps,
+                                args.accession_metadata,
+                                args.server)
+        accessioner.accession_steps()

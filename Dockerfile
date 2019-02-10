@@ -6,7 +6,7 @@ RUN apk add --no-cache python3 && \
     rm -r /usr/lib/python*/ensurepip && \
     pip3 install --upgrade pip setuptools && \
  	pip3 install google-cloud-storage && \
- 	pip3 install https://github.com/StanfordBioinformatics/encode_utils/archive/master.zip && \
+ 	pip3 install encode_utils==2.5.0 && \
     rm -r /root/.cache
 
 # Cromwell needs bash

@@ -14,6 +14,7 @@ workflow accession {
 
 		call accession_metadata { input :
 			credentials = google_credentials,
+			dcc_credentials = dcc_credentials,
 			metadata = metadata,
 			steps = steps,
 			server = dcc_server
@@ -33,7 +34,7 @@ task filter_outputs {
 	}
 
 	output {
-		Array[File] metadata_jsons = glob("json_files/*.json")
+		Array[File] metadata_jsons = glob("*.json")
 	}
 }
 
@@ -51,7 +52,8 @@ task accession_metadata {
 		source ${dcc_credentials}
 		set +o allexport
 		accession.py \
-			${"--accession-output " + write_json(steps)} \
+			--accession-steps ${write_json(steps)} \
+			${"--accession-metadata " + metadata} \
 			${"--server " + server}
 		rm ${credentials}
 		rm ${dcc_credentials}
@@ -59,5 +61,6 @@ task accession_metadata {
 
 	output {
 		String log = read_string(stdout())
+		String log_err = read_string(stderr())
 	}
 }
