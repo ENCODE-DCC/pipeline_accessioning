@@ -464,7 +464,7 @@ class Accession(object):
                                                 'idr_plot'))
         qc_object.update({
             'step_run':                             step_run_id,
-            'quality_metric_of':                    [encode_bam_file.get('@id')],
+            'quality_metric_of':                    [encode_file.get('@id')],
             'IDR_cutoff':                           idr_cutoff,
             'status':                               'released',
             'IDR_plot_rep{}_pr'.format(replicate):  self.get_attachment(plot_png, 'image/png')})
