@@ -457,7 +457,7 @@ class Accession(object):
         qc_object = {}
         qc_object['F1'] = frip_score
         qc_object['N1'] = idr_peaks
-        idr_cutoff = gs_file.task.inputs['idr_thresh']
+        idr_cutoff = self.analysis.metadata['inputs']['atac.idr_thresh']
         plot_png = next(self.analysis.search_down(gs_file.task,
                                                   'idr_pr',
                                                   'idr_plot'))
