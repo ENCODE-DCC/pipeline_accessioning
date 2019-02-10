@@ -21,7 +21,8 @@ COMMON_METADATA = {
 
 QC_MAP = {
     'cross_correlation': 'attach_cross_correlation_qc_to',
-    'samtools_flagstat': 'attach_flagstat_qc_to'
+    'samtools_flagstat': 'attach_flagstat_qc_to',
+    'idr':               'attach_idr_qc_to'
 }
 
 
@@ -197,7 +198,6 @@ class Analysis(object):
             if 'fastqs' in file.filekeys and file.task is None:
                 fastqs.append(file)
         return fastqs
-
 
     # Search the Analysis hirearchy up for a file matching filekey
     # Returns generator object, access with next() or list()
@@ -432,6 +432,46 @@ class Accession(object):
                                        self.dataset,
                                        file_format_type)
 
+    def get_bio_replicate(self, encode_file, string=True):
+        replicate = encode_file.get('biological_replicates')[0]
+        if string:
+            return str(replicate)
+        return int(replicate)
+
+    def attach_idr_qc_to(self, encode_file, gs_file):
+        if list(filter(lambda x: 'IDRQualityMetric'
+                                 in x['@type'],
+                       encode_file['quality_metrics'])):
+            return
+        qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
+        idr_qc = qc['idr_frip_qc']
+        replicate = self.get_bio_replicate(encode_file)
+        rep_pr = idr_qc['rep' + replicate + '-pr']
+        frip_score = rep_pr['FRiP']
+        idr_peaks = qc['ataqc']['rep' + replicate]['IDR peaks'][0]
+        step_run = encode_bam_file.get('step_run')
+        if isinstance(step_run, str):
+            step_run_id = step_run
+        elif isinstance(step_run, dict):
+            step_run_id = step_run.get('@id')
+        qc_object = {}
+        qc_object['F1'] = frip_score
+        qc_object['N1'] = idr_peaks
+        idr_cutoff = gs_file.task.inputs['idr_thresh']
+        plot_png = next(self.analysis.search_down(gs_file.task,
+                                                  'idr_pr',
+                                                  'idr_plot'))
+        qc_object.update({
+            'step_run':                             step_run_id,
+            'quality_metric_of':                    [encode_bam_file.get('@id')],
+            'IDR_cutoff':                           idr_cutoff,
+            'status':                               'released',
+            'IDR_plot_rep{}_pr'.format(replicate):  self.get_attachment(plot_png, 'image/png')})
+        qc_object.update(COMMON_METADATA)
+        qc_object[Connection.PROFILE_KEY] = 'idr-quality-metrics'
+        posted_qc = self.conn.post(qc_object, require_aliases=False)
+        return posted_qc
+
     def attach_flagstat_qc_to(self, encode_bam_file, gs_file):
         # Return early if qc metric exists
         if list(filter(lambda x: 'SamtoolsFlagstatsQualityMetric'
@@ -439,7 +479,8 @@ class Accession(object):
                        encode_bam_file['quality_metrics'])):
             return
         qc = self.backend.read_json(self.analysis.get_files('qc_json')[0])
-        flagstat_qc = qc['nodup_flagstat_qc']['rep' + str(int(encode_bam_file.get('biological_replicates')[0]))]
+        replicate = self.get_bio_replicate(encode_bam_file)
+        flagstat_qc = qc['nodup_flagstat_qc']['rep' + replicate]
         for key, value in flagstat_qc.items():
             if '_pct' in key:
                 flagstat_qc[key] = '{}%'.format(value)
@@ -472,8 +513,9 @@ class Accession(object):
                                                         'bowtie2',
                                                         'read_len_log'))
         read_length = int(self.backend.read_file(read_length_file.filename).decode())
-        xcor_qc = qc['xcor_score']['rep' + str(encode_bam_file.get('biological_replicates')[0])]
-        pbc_qc = qc['pbc_qc']['rep' + str(encode_bam_file.get('biological_replicates')[0])]
+        replicate = self.get_bio_replicate(encode_bam_file)
+        xcor_qc = qc['xcor_score']['rep' + replicate]
+        pbc_qc = qc['pbc_qc']['rep' + replicate]
         step_run = encode_bam_file.get('step_run')
         if isinstance(step_run, str):
             step_run_id = step_run
