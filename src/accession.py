@@ -659,17 +659,18 @@ if __name__ == '__main__':
                         default='dev',
                         help='Server files will be accessioned to')
     parser.add_argument('--lab',
-                        default=None,
                         type=str,
+                        default=None,
                         help='Lab')
     parser.add_argument('--award',
-                        default=None,
                         type=str,
+                        default=None,
                         help='Award')
     args = parser.parse_args()
     if args.filter_from_path:
         filter_outputs_by_path(args.filter_from_path)
-    if args.accession_steps and args.accession_metadata:
+    if (args.accession_steps and args.accession_metadata
+            and args.lab and args.award):
         accessioner = Accession(args.accession_steps,
                                 args.accession_metadata,
                                 args.server,
