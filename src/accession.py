@@ -598,7 +598,7 @@ class Accession(object):
                     except Exception as e:
                         if 'Conflict' in str(e) and file_params.get('possible_duplicate'):
                             continue
-                        elif 'Missing all derived_from' in str(e):
+                        elif 'Missing all of the derived_from' in str(e):
                             continue
                         else:
                             raise
