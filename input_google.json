@@ -7,6 +7,23 @@
         {
             "dcc_step_version":     "/analysis-step-versions/kundaje-lab-atac-seq-trim-align-filter-step-v-1-0/",
             "dcc_step_run":         "atac-seq-trim-align-filter-step-run-v1",
+            "wdl_task_name":        "bowtie2",
+            "wdl_files":            [
+                {
+                    "filekey":                  "bam",
+                    "output_type":              "unfiltered alignments",
+                    "file_format":              "bam",
+                    "derived_from_files":       [{
+                        "derived_from_task":        "trim_adapter",
+                        "derived_from_filekey":     "fastqs",
+                        "derived_from_inputs":      "true"
+                    }]
+                }
+            ]
+        },
+        {
+            "dcc_step_version":     "/analysis-step-versions/kundaje-lab-atac-seq-trim-align-filter-step-v-1-0/",
+            "dcc_step_run":         "atac-seq-trim-align-filter-step-run-v1",
             "wdl_task_name":        "filter",
             "wdl_files":            [
                 {
