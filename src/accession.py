@@ -25,6 +25,9 @@ QC_MAP = {
     'idr':               'attach_idr_qc_to'
 }
 
+# If derived froms are missing, terminate
+# file format conversion for IDR step
+
 
 ASSEMBLIES = ['GRCh38', 'mm10']
 
@@ -420,7 +423,8 @@ class Accession(object):
 
     # File object to be accessioned
     # inputs=True will search for input fastqs in derived_from
-    def make_file_obj(self, file, file_format, output_type, step_run, derived_from_files, file_format_type=None, inputs=False):
+    def make_file_obj(self, file, file_format, output_type, step_run,
+                      derived_from_files, file_format_type=None, inputs=False):
         derived_from = self.get_derived_from_all(file,
                                                  derived_from_files,
                                                  inputs)
