@@ -1,6 +1,8 @@
 workflow accession {
-	String metadata_outputs_path
+	String lab
+	String award
 	String dcc_server
+	String metadata_outputs_path
 	File google_credentials
 	File dcc_credentials
 	Array[Object] steps
@@ -11,13 +13,14 @@ workflow accession {
 	}
 
 	scatter(metadata in filter_outputs.metadata_jsons) {
-
 		call accession_metadata { input :
 			credentials = google_credentials,
 			dcc_credentials = dcc_credentials,
 			metadata = metadata,
 			steps = steps,
-			server = dcc_server
+			server = dcc_server,
+			lab = lab,
+			award = award
 		}
 	}
 }
@@ -39,6 +42,8 @@ task filter_outputs {
 }
 
 task accession_metadata {
+	String lab
+	String award
 	String server
 	File metadata
 	File credentials
@@ -54,7 +59,9 @@ task accession_metadata {
 		accession.py \
 			--accession-steps ${write_json(steps)} \
 			${"--accession-metadata " + metadata} \
-			${"--server " + server}
+			${"--server " + server} \ 
+			${"--lab " + lab} \
+			${"--award " + award}
 		rm ${credentials}
 		rm ${dcc_credentials}
 	}

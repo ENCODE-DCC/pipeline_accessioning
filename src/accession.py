@@ -15,7 +15,7 @@ from requests.exceptions import HTTPError
 
 
 COMMON_METADATA = {
-    'lab': '/labs/anshul-kundaje/',
+    'lab': '/labs/encode-processing-pipeline/',
     'award': 'U41HG007000'
 }
 
@@ -268,13 +268,19 @@ class GSFile(object):
 
 class Accession(object):
     """docstring for Accession"""
-    def __init__(self, steps, metadata_json, server):
+    def __init__(self, steps, metadata_json, server, lab, award):
         super(Accession, self).__init__()
+        self.set_lab_award(lab, award)
         self.analysis = Analysis(metadata_json)
         self.steps_and_params_json = self.file_to_json(steps)
         self.backend = self.analysis.backend
         self.conn = Connection(server)
         self.new_files = []
+
+    def set_lab_award(self, lab, award):
+        global COMMON_METADATA
+        COMMON_METADATA['lab'] = lab
+        COMMON_METADATA['award'] = award
 
     def file_to_json(self, file):
         with open(file) as json_file:
@@ -652,11 +658,19 @@ if __name__ == '__main__':
     parser.add_argument('--server',
                         default='dev',
                         help='Server files will be accessioned to')
+    parser.add_argument('--lab',
+                        type=str,
+                        help='Lab')
+    parser.add_argument('--award',
+                        type=str,
+                        help='Award')
     args = parser.parse_args()
     if args.filter_from_path:
         filter_outputs_by_path(args.filter_from_path)
     if args.accession_steps and args.accession_metadata:
         accessioner = Accession(args.accession_steps,
                                 args.accession_metadata,
-                                args.server)
+                                args.server,
+                                args.lab,
+                                args.award)
         accessioner.accession_steps()
