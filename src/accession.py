@@ -418,10 +418,10 @@ class Accession(object):
         derived_from_accession_ids = list(set(derived_from_accession_ids))
         # Raise exception when some or all of the derived_from files
         # are missing from the portal
-        if len(derived_from_accession_ids) != len(derived_from_files):
-            raise Exception('Missing some of the derived_from files on the portal')
         if not derived_from_accession_ids:
             raise Exception('Missing all of the derived_from files on the portal')
+        if len(derived_from_accession_ids) != len(derived_from_files):
+            raise Exception('Missing some of the derived_from files on the portal')
         return ['/files/{}/'.format(accession_id)
                 for accession_id in derived_from_accession_ids]
 
