@@ -659,9 +659,11 @@ if __name__ == '__main__':
                         default='dev',
                         help='Server files will be accessioned to')
     parser.add_argument('--lab',
+                        default=None,
                         type=str,
                         help='Lab')
     parser.add_argument('--award',
+                        default=None,
                         type=str,
                         help='Award')
     args = parser.parse_args()
