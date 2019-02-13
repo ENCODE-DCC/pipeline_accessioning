@@ -630,7 +630,7 @@ class Accession(object):
 
 
 def filter_outputs_by_path(path):
-    bucket = path.split('/')[0]
+    bucket = path.split('gs://')[1].split('/')[0]
     google_backend = GCBackend(bucket)
     filtered = [file
                 for file

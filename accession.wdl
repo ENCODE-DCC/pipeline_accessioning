@@ -59,7 +59,7 @@ task accession_metadata {
 		accession.py \
 			--accession-steps ${write_json(steps)} \
 			${"--accession-metadata " + metadata} \
-			${"--server " + server} \ 
+			${"--server " + server} \
 			${"--lab " + lab} \
 			${"--award " + award}
 		rm ${credentials}

@@ -1,5 +1,5 @@
 {
-    "accession.metadata_outputs_path":  "atac-seq-accessioning-metadata/two_replicates_metadata",
+    "accession.metadata_outputs_path":  "gs://atac-seq-accessioning-metadata/two_replicates_metadata",
     "accession.google_credentials":     "gs://atac-seq-accessioning-samples/credentials/atac-seq-pipeline-bb9ab8561cc3.json",
     "accession.dcc_credentials":        "gs://atac-seq-accessioning-samples/credentials/dcc_creds.txt",
     "accession.dcc_server":             "dev",
@@ -129,7 +129,8 @@
                     }]
                 }
             ]
-        },      {
+        },      
+        {
             "dcc_step_version":     "/analysis-step-versions/kundaje-lab-atac-seq-idr-peaks-conversion-step-v-1-0/",
             "dcc_step_run":         "atac-seq-idr-peaks-conversion-step-run-v1",
             "wdl_task_name":        "reproducibility_idr",
