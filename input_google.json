@@ -127,6 +127,33 @@
                     }]
                 }
             ]
+        },      {
+            "dcc_step_version":     "/analysis-step-versions/kundaje-lab-atac-seq-idr-peaks-conversion-step-v-1-0/",
+            "dcc_step_run":         "atac-seq-idr-peaks-conversion-step-run-v1",
+            "wdl_task_name":        "reproducibility_idr",
+            "wdl_files":            [
+                {
+                    "filekey":                  "optimal_peak_bb",
+                    "output_type":              "optimal idr thresholded peaks",
+                    "file_format":              "bigBed",
+                    "file_format_type":         "narrowPeak",
+                    "derived_from_files":       [{
+                        "derived_from_task":        "reproducibility_idr",
+                        "derived_from_filekey":     "optimal_peak"
+                    }]
+                },
+                {
+                    "filekey":                  "conservative_peak_bb",
+                    "output_type":              "conservative idr thresholded peaks",
+                    "file_format":              "bigBed",
+                    "file_format_type":         "narrowPeak",
+                    "derived_from_files":       [{
+                        "derived_from_task":        "reproducibility_idr",
+                        "derived_from_filekey":     "conservative_peak",
+                        "derived_from_output_type": "conservative idr thresholded peaks"
+                    }]
+                }
+            ]
         },
         {
             "dcc_step_version":     "/analysis-step-versions/kundaje-lab-atac-seq-overlap-peaks-step-v-1-0/",

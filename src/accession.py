@@ -384,9 +384,8 @@ class Accession(object):
                 self.get_derived_from(file,
                                       ancestor.get('derived_from_task'),
                                       ancestor.get('derived_from_filekey'),
-                                      ancestor.get('derived_from_inputs')
-                                      )
-                )
+                                      ancestor.get('derived_from_output_type'),
+                                      ancestor.get('derived_from_inputs')))
         return list(self.flatten(ancestors))
 
     def flatten(self, nested_list):
@@ -397,7 +396,7 @@ class Accession(object):
                 yield from self.flatten(item)
 
     # Returns list of accession ids of files on portal or recently accessioned
-    def get_derived_from(self, file, task_name, filekey, inputs=False):
+    def get_derived_from(self, file, task_name, filekey, output_type=None, inputs=False):
         derived_from_files = list(set(list(self.analysis.search_up(file.task,
                                                                    task_name,
                                                                    filekey,
@@ -411,10 +410,18 @@ class Accession(object):
         for gs_file in derived_from_files:
             for encode_file in accessioned_files:
                 if gs_file.md5sum == encode_file.get('md5sum'):
+                    # Optimal peaks can be mistaken for conservative peaks
+                    # when their md5sum is the same
+                    if output_type and output_type != encode_file.get('output_type'):
+                        continue
                     derived_from_accession_ids.append(encode_file.get('accession'))
         derived_from_accession_ids = list(set(derived_from_accession_ids))
+        # Raise exception when some or all of the derived_from files
+        # are missing from the portal
         if len(derived_from_accession_ids) != len(derived_from_files):
-            raise Exception('Missing derived_from files on the portal')
+            raise Exception('Missing some of the derived_from files on the portal')
+        if not derived_from_accession_ids:
+            raise Exception('Missing all of the derived_from files on the portal')
         return ['/files/{}/'.format(accession_id)
                 for accession_id in derived_from_accession_ids]
 
@@ -589,9 +596,17 @@ class Accession(object):
                     # Conservative IDR thresholded peaks may have
                     # the same md5sum as optimal one
                     try:
+                        obj = self.make_file_obj(wdl_file,
+                                                 file_params['file_format'],
+                                                 file_params['output_type'],
+                                                 step_run,
+                                                 file_params['derived_from_files'],
+                                                 file_format_type=file_params.get('file_format_type'))
                         encode_file = self.accession_file(obj, wdl_file)
-                    except HTTPError as e:
+                    except Exception as e:
                         if 'Conflict' in str(e) and file_params.get('possible_duplicate'):
+                            continue
+                        elif 'Missing all derived_from' in str(e):
                             continue
                         else:
                             raise
