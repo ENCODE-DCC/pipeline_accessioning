@@ -311,6 +311,7 @@ class Accession(object):
             local_file = self.backend.download(gs_file.filename)[0]
             encode_file['submitted_file_name'] = local_file
             encode_posted_file = self.conn.post(encode_file)
+            os.remove(local_file)
             permanent_file_path = {'submitted_file_name': gs_file.filename}
             self.patch_file(encode_posted_file, permanent_file_path)
             self.new_files.append(encode_posted_file)
@@ -364,7 +365,6 @@ class Accession(object):
             'file_format':          file_format,
             'output_type':          output_type,
             'assembly':             self.assembly,
-            'submitted_file_name':  file.filename.split('gs://')[-1],
             'dataset':              dataset,
             'step_run':             step_run.get('@id'),
             'derived_from':         derived_from,
@@ -585,14 +585,6 @@ class Accession(object):
                                  in task.output_files
                                  if file_params['filekey']
                                  in file.filekeys]:
-
-                    obj = self.make_file_obj(wdl_file,
-                                             file_params['file_format'],
-                                             file_params['output_type'],
-                                             step_run,
-                                             file_params['derived_from_files'],
-                                             file_format_type=file_params.get('file_format_type'))
-
                     # Conservative IDR thresholded peaks may have
                     # the same md5sum as optimal one
                     try:
@@ -610,7 +602,6 @@ class Accession(object):
                             continue
                         else:
                             raise
-
                     # Parameter file inputted assumes Accession implements
                     # the methods to attach the quality metrics
                     quality_metrics = file_params.get('quality_metrics', [])

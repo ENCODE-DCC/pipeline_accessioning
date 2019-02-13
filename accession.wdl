@@ -59,6 +59,12 @@ task accession_metadata {
 		rm ${dcc_credentials}
 	}
 
+	runtime {
+		cpu : 1
+		disks : "local-disk 150 HDD"
+	}	
+
+
 	output {
 		String log = read_string(stdout())
 		String log_err = read_string(stderr())
