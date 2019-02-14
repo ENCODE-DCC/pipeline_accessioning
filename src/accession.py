@@ -643,7 +643,9 @@ def filter_outputs_by_path(path):
     filtered = [file
                 for file
                 in list(google_backend.bucket.list_blobs())
-                if path in file.id and '.json' in file.id]
+                if path.split('gs://')[1]
+                in file.id
+                and '.json' in file.id]
     for file in filtered:
         file.download_to_filename(file.public_url.split('/')[-1])
 
