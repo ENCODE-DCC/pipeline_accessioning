@@ -316,15 +316,23 @@ class Accession(object):
 
     def accession_file(self, encode_file, gs_file):
         file_exists = self.file_at_portal(gs_file.filename)
+        submitted_file_path = {'submitted_file_name': gs_file.filename}
         if not file_exists:
             local_file = self.backend.download(gs_file.filename)[0]
             encode_file['submitted_file_name'] = local_file
             encode_posted_file = self.conn.post(encode_file)
             os.remove(local_file)
-            permanent_file_path = {'submitted_file_name': gs_file.filename}
-            self.patch_file(encode_posted_file, permanent_file_path)
+            encode_posted_file = self.patch_file(encode_posted_file,
+                                                 submitted_file_path)
             self.new_files.append(encode_posted_file)
             return encode_posted_file
+        elif (file_exists
+              and file_exists.get('status')
+              in ['deleted', 'revoked']):
+            encode_file.update(submitted_file_path)
+            encode_patched_file = self.patch_file(file_exists, encode_file)
+            self.new_files.append(encode_patched_file)
+            return encode_patched_file
         return file_exists
 
     def patch_file(self, encode_file, new_properties):
