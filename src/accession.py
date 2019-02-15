@@ -337,7 +337,7 @@ class Accession(object):
 
     def patch_file(self, encode_file, new_properties):
         new_properties[self.conn.ENCID_KEY] = encode_file.get('accession')
-        self.conn.patch(new_properties)
+        return self.conn.patch(new_properties, extend_array_values=False)
 
     def get_or_make_step_run(self, lab_prefix, run_name, step_version, task_name):
         docker_tag = self.analysis.get_tasks(task_name)[0].docker_image.split(':')[1]
