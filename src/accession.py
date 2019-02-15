@@ -6,6 +6,7 @@ import operator
 import argparse
 import os
 import encode_utils as eu
+import requests
 from itertools import chain
 from functools import reduce
 from base64 import b64encode, b64decode
@@ -276,11 +277,23 @@ class Accession(object):
         self.backend = self.analysis.backend
         self.conn = Connection(server)
         self.new_files = []
+        self.current_user = self.get_current_user()
 
     def set_lab_award(self, lab, award):
         global COMMON_METADATA
         COMMON_METADATA['lab'] = lab
         COMMON_METADATA['award'] = award
+
+    def get_current_user(self):
+        response = requests.get(self.conn.dcc_url + '/session-properties',
+                                auth=self.conn.auth)
+        if response.ok:
+            user = response.json().get('user')
+            if user:
+                return user.get('@id')
+            raise Exception('Authenticated user not found')
+        else:
+            raise Exception('Request to portal failed')
 
     def file_to_json(self, file):
         with open(file) as json_file:
@@ -330,6 +343,9 @@ class Accession(object):
               and file_exists.get('status')
               in ['deleted', 'revoked']):
             encode_file.update(submitted_file_path)
+            # Update the file to current user
+            # TODO: Reverse this when duplicate md5sums are enabled
+            encode_file.update({'submitted_by': self.current_user})
             encode_patched_file = self.patch_file(file_exists, encode_file)
             self.new_files.append(encode_patched_file)
             return encode_patched_file
