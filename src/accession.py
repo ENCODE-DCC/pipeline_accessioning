@@ -26,9 +26,6 @@ QC_MAP = {
     'idr':               'attach_idr_qc_to'
 }
 
-# If derived froms are missing, terminate
-# file format conversion for IDR step
-
 
 ASSEMBLIES = ['GRCh38', 'mm10']
 
@@ -300,6 +297,11 @@ class Accession(object):
             json_obj = json.load(json_file)
         return json_obj
 
+    def file_to_json(self, file):
+        with open(file) as json_file:
+            json_obj = json.load(json_file)
+        return json_obj
+
     def accession_fastqs(self):
         pass
 
@@ -462,6 +464,7 @@ class Accession(object):
     # inputs=True will search for input fastqs in derived_from
     def make_file_obj(self, file, file_format, output_type, step_run,
                       derived_from_files, file_format_type=None, inputs=False):
+
         derived_from = self.get_derived_from_all(file,
                                                  derived_from_files,
                                                  inputs)
@@ -636,6 +639,7 @@ class Accession(object):
                             continue
                         else:
                             raise
+
                     # Parameter file inputted assumes Accession implements
                     # the methods to attach the quality metrics
                     quality_metrics = file_params.get('quality_metrics', [])
@@ -662,6 +666,7 @@ def filter_outputs_by_path(path):
                 if path.split('gs://')[1]
                 in file.id
                 and '.json' in file.id]
+
     for file in filtered:
         file.download_to_filename(file.public_url.split('/')[-1])
 
@@ -702,4 +707,5 @@ if __name__ == '__main__':
                                 args.server,
                                 args.lab,
                                 args.award)
+
         accessioner.accession_steps()
