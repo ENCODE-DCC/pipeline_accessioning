@@ -6,6 +6,7 @@ import operator
 import argparse
 import os
 import encode_utils as eu
+import requests
 from itertools import chain
 from functools import reduce
 from base64 import b64encode, b64decode
@@ -15,7 +16,7 @@ from requests.exceptions import HTTPError
 
 
 COMMON_METADATA = {
-    'lab': '/labs/anshul-kundaje/',
+    'lab': '/labs/encode-processing-pipeline/',
     'award': 'U41HG007000'
 }
 
@@ -265,13 +266,42 @@ class GSFile(object):
 
 class Accession(object):
     """docstring for Accession"""
-    def __init__(self, steps, metadata_json, server):
+
+    def __init__(self, steps, metadata_json, server, lab, award):
         super(Accession, self).__init__()
+        self.set_lab_award(lab, award)
         self.analysis = Analysis(metadata_json)
         self.steps_and_params_json = self.file_to_json(steps)
         self.backend = self.analysis.backend
         self.conn = Connection(server)
         self.new_files = []
+        self.current_user = self.get_current_user()
+
+    def set_lab_award(self, lab, award):
+        global COMMON_METADATA
+        COMMON_METADATA['lab'] = lab
+        COMMON_METADATA['award'] = award
+
+    def get_current_user(self):
+        response = requests.get(self.conn.dcc_url + '/session-properties',
+                                auth=self.conn.auth)
+        if response.ok:
+            user = response.json().get('user')
+            if user:
+                return user.get('@id')
+            raise Exception('Authenticated user not found')
+        else:
+            raise Exception('Request to portal failed')
+
+    def file_to_json(self, file):
+        with open(file) as json_file:
+            json_obj = json.load(json_file)
+        return json_obj
+
+    def file_to_json(self, file):
+        with open(file) as json_file:
+            json_obj = json.load(json_file)
+        return json_obj
 
     def file_to_json(self, file):
         with open(file) as json_file:
@@ -307,19 +337,31 @@ class Accession(object):
 
     def accession_file(self, encode_file, gs_file):
         file_exists = self.file_at_portal(gs_file.filename)
+        submitted_file_path = {'submitted_file_name': gs_file.filename}
         if not file_exists:
             local_file = self.backend.download(gs_file.filename)[0]
             encode_file['submitted_file_name'] = local_file
             encode_posted_file = self.conn.post(encode_file)
-            permanent_file_path = {'submitted_file_name': gs_file.filename}
-            self.patch_file(encode_posted_file, permanent_file_path)
+            os.remove(local_file)
+            encode_posted_file = self.patch_file(encode_posted_file,
+                                                 submitted_file_path)
             self.new_files.append(encode_posted_file)
             return encode_posted_file
+        elif (file_exists
+              and file_exists.get('status')
+              in ['deleted', 'revoked']):
+            encode_file.update(submitted_file_path)
+            # Update the file to current user
+            # TODO: Reverse this when duplicate md5sums are enabled
+            encode_file.update({'submitted_by': self.current_user})
+            encode_patched_file = self.patch_file(file_exists, encode_file)
+            self.new_files.append(encode_patched_file)
+            return encode_patched_file
         return file_exists
 
     def patch_file(self, encode_file, new_properties):
         new_properties[self.conn.ENCID_KEY] = encode_file.get('accession')
-        self.conn.patch(new_properties)
+        return self.conn.patch(new_properties, extend_array_values=False)
 
     def get_or_make_step_run(self, lab_prefix, run_name, step_version, task_name):
         docker_tag = self.analysis.get_tasks(task_name)[0].docker_image.split(':')[1]
@@ -364,7 +406,6 @@ class Accession(object):
             'file_format':          file_format,
             'output_type':          output_type,
             'assembly':             self.assembly,
-            'submitted_file_name':  file.filename.split('gs://')[-1],
             'dataset':              dataset,
             'step_run':             step_run.get('@id'),
             'derived_from':         derived_from,
@@ -384,9 +425,8 @@ class Accession(object):
                 self.get_derived_from(file,
                                       ancestor.get('derived_from_task'),
                                       ancestor.get('derived_from_filekey'),
-                                      ancestor.get('derived_from_inputs')
-                                      )
-                )
+                                      ancestor.get('derived_from_output_type'),
+                                      ancestor.get('derived_from_inputs')))
         return list(self.flatten(ancestors))
 
     def flatten(self, nested_list):
@@ -397,7 +437,7 @@ class Accession(object):
                 yield from self.flatten(item)
 
     # Returns list of accession ids of files on portal or recently accessioned
-    def get_derived_from(self, file, task_name, filekey, inputs=False):
+    def get_derived_from(self, file, task_name, filekey, output_type=None, inputs=False):
         derived_from_files = list(set(list(self.analysis.search_up(file.task,
                                                                    task_name,
                                                                    filekey,
@@ -411,16 +451,27 @@ class Accession(object):
         for gs_file in derived_from_files:
             for encode_file in accessioned_files:
                 if gs_file.md5sum == encode_file.get('md5sum'):
+                    # Optimal peaks can be mistaken for conservative peaks
+                    # when their md5sum is the same
+                    if output_type and output_type != encode_file.get('output_type'):
+                        continue
                     derived_from_accession_ids.append(encode_file.get('accession'))
         derived_from_accession_ids = list(set(derived_from_accession_ids))
+
+        # Raise exception when some or all of the derived_from files
+        # are missing from the portal
+        if not derived_from_accession_ids:
+            raise Exception('Missing all of the derived_from files on the portal')
         if len(derived_from_accession_ids) != len(derived_from_files):
-            raise Exception('Missing derived_from files on the portal')
+            raise Exception('Missing some of the derived_from files on the portal')
         return ['/files/{}/'.format(accession_id)
                 for accession_id in derived_from_accession_ids]
 
     # File object to be accessioned
     # inputs=True will search for input fastqs in derived_from
-    def make_file_obj(self, file, file_format, output_type, step_run, derived_from_files, file_format_type=None, inputs=False):
+
+    def make_file_obj(self, file, file_format, output_type, step_run,
+                      derived_from_files, file_format_type=None, inputs=False):
         derived_from = self.get_derived_from_all(file,
                                                  derived_from_files,
                                                  inputs)
@@ -579,19 +630,20 @@ class Accession(object):
                                  if file_params['filekey']
                                  in file.filekeys]:
 
-                    obj = self.make_file_obj(wdl_file,
-                                             file_params['file_format'],
-                                             file_params['output_type'],
-                                             step_run,
-                                             file_params['derived_from_files'],
-                                             file_format_type=file_params.get('file_format_type'))
-
                     # Conservative IDR thresholded peaks may have
                     # the same md5sum as optimal one
                     try:
+                        obj = self.make_file_obj(wdl_file,
+                                                 file_params['file_format'],
+                                                 file_params['output_type'],
+                                                 step_run,
+                                                 file_params['derived_from_files'],
+                                                 file_format_type=file_params.get('file_format_type'))
                         encode_file = self.accession_file(obj, wdl_file)
-                    except HTTPError as e:
+                    except Exception as e:
                         if 'Conflict' in str(e) and file_params.get('possible_duplicate'):
+                            continue
+                        elif 'Missing all of the derived_from' in str(e):
                             continue
                         else:
                             raise
@@ -614,12 +666,16 @@ class Accession(object):
 
 
 def filter_outputs_by_path(path):
-    bucket = path.split('/')[0]
+    bucket = path.split('gs://')[1].split('/')[0]
     google_backend = GCBackend(bucket)
     filtered = [file
                 for file
                 in list(google_backend.bucket.list_blobs())
-                if path in file.id and '.json' in file.id]
+
+                if path.split('gs://')[1]
+                in file.id
+                and '.json' in file.id]
+
     for file in filtered:
         file.download_to_filename(file.public_url.split('/')[-1])
 
@@ -642,11 +698,23 @@ if __name__ == '__main__':
     parser.add_argument('--server',
                         default='dev',
                         help='Server files will be accessioned to')
+    parser.add_argument('--lab',
+                        type=str,
+                        default=None,
+                        help='Lab')
+    parser.add_argument('--award',
+                        type=str,
+                        default=None,
+                        help='Award')
     args = parser.parse_args()
     if args.filter_from_path:
         filter_outputs_by_path(args.filter_from_path)
-    if args.accession_steps and args.accession_metadata:
+
+    if (args.accession_steps and args.accession_metadata
+            and args.lab and args.award):
         accessioner = Accession(args.accession_steps,
                                 args.accession_metadata,
-                                args.server)
+                                args.server,
+                                args.lab,
+                                args.award)
         accessioner.accession_steps()
